@@ -62,15 +62,21 @@ typedef Eigen::Matrix<FloatingPoint, 1, 8> InterpVector;
 typedef Eigen::Array<IndexElement, 3, 8> InterpIndexes;
 
 struct Color {
-  Color() : r(0), g(0), b(0), a(0) {}
+  Color() {
+    rgba[0] = 0;
+    rgba[1] = 0;
+    rgba[2] = 0;
+    rgba[3] = 0;
+  }
   Color(uint8_t _r, uint8_t _g, uint8_t _b) : Color(_r, _g, _b, 255) {}
-  Color(uint8_t _r, uint8_t _g, uint8_t _b, uint8_t _a)
-      : r(_r), g(_g), b(_b), a(_a) {}
+  Color(uint8_t _r, uint8_t _g, uint8_t _b, uint8_t _a)  {
+    rgba[0] = _r;
+    rgba[1] = _g;
+    rgba[2] = _b;
+    rgba[3] = _a;
+  }
 
-  uint8_t r;
-  uint8_t g;
-  uint8_t b;
-  uint8_t a;
+  uint8_t rgba[4];
 
   static Color blendTwoColors(const Color& first_color,
                               FloatingPoint first_weight,
@@ -82,14 +88,14 @@ struct Color {
     second_weight /= total_weight;
 
     Color new_color;
-    new_color.r = static_cast<uint8_t>(
-        round(first_color.r * first_weight + second_color.r * second_weight));
-    new_color.g = static_cast<uint8_t>(
-        round(first_color.g * first_weight + second_color.g * second_weight));
-    new_color.b = static_cast<uint8_t>(
-        round(first_color.b * first_weight + second_color.b * second_weight));
-    new_color.a = static_cast<uint8_t>(
-        round(first_color.a * first_weight + second_color.a * second_weight));
+    new_color.rgba[0] = static_cast<uint8_t>(
+        round(first_color.rgba[0] * first_weight + second_color.rgba[0] * second_weight));
+    new_color.rgba[1] = static_cast<uint8_t>(
+        round(first_color.rgba[1] * first_weight + second_color.rgba[1] * second_weight));
+    new_color.rgba[2] = static_cast<uint8_t>(
+        round(first_color.rgba[2] * first_weight + second_color.rgba[2] * second_weight));
+    new_color.rgba[3] = static_cast<uint8_t>(
+        round(first_color.rgba[3] * first_weight + second_color.rgba[3] * second_weight));
 
     return new_color;
   }

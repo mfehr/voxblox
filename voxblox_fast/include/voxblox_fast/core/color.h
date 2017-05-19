@@ -11,7 +11,7 @@ namespace voxblox_fast {
 inline Color rainbowColorMap(double h) {
   // Directly from OctomapProvider in octomap.
   Color color;
-  color.a = 255;
+  color.rgba[3] = 255;
   // blend over HSV-values (more colors)
 
   double s = 1.0;
@@ -31,39 +31,39 @@ inline Color rainbowColorMap(double h) {
   switch (i) {
     case 6:
     case 0:
-      color.r = 255 * v;
-      color.g = 255 * n;
-      color.b = 255 * m;
+      color.rgba[0] = 255 * v;
+      color.rgba[1] = 255 * n;
+      color.rgba[2] = 255 * m;
       break;
     case 1:
-      color.r = 255 * n;
-      color.g = 255 * v;
-      color.b = 255 * m;
+      color.rgba[0] = 255 * n;
+      color.rgba[1] = 255 * v;
+      color.rgba[2] = 255 * m;
       break;
     case 2:
-      color.r = 255 * m;
-      color.g = 255 * v;
-      color.b = 255 * n;
+      color.rgba[0] = 255 * m;
+      color.rgba[1] = 255 * v;
+      color.rgba[2] = 255 * n;
       break;
     case 3:
-      color.r = 255 * m;
-      color.g = 255 * n;
-      color.b = 255 * v;
+      color.rgba[0] = 255 * m;
+      color.rgba[1] = 255 * n;
+      color.rgba[2] = 255 * v;
       break;
     case 4:
-      color.r = 255 * n;
-      color.g = 255 * m;
-      color.b = 255 * v;
+      color.rgba[0] = 255 * n;
+      color.rgba[1] = 255 * m;
+      color.rgba[2] = 255 * v;
       break;
     case 5:
-      color.r = 255 * v;
-      color.g = 255 * m;
-      color.b = 255 * n;
+      color.rgba[0] = 255 * v;
+      color.rgba[1] = 255 * m;
+      color.rgba[2] = 255 * n;
       break;
     default:
-      color.r = 255;
-      color.g = 127;
-      color.b = 127;
+      color.rgba[0] = 255;
+      color.rgba[1] = 127;
+      color.rgba[2] = 127;
       break;
   }
 
@@ -72,11 +72,11 @@ inline Color rainbowColorMap(double h) {
 
 inline Color grayColorMap(double h) {
   Color color;
-  color.a = 255;
+  color.rgba[3] = 255;
 
-  color.r = round(h * 255);
-  color.b = 128;
-  color.g = color.r;
+  color.rgba[0] = round(h * 255);
+  color.rgba[1] = 128;
+  color.rgba[2] = color.rgba[0];
 
   return color;
 }
@@ -84,11 +84,11 @@ inline Color grayColorMap(double h) {
 inline Color randomColor() {
   Color color;
 
-  color.a = 255;
+  color.rgba[3] = 255;
 
-  color.r = rand() % 256;
-  color.b = rand() % 256;
-  color.g = rand() % 256;
+  color.rgba[0] = rand() % 256;
+  color.rgba[1] = rand() % 256;
+  color.rgba[2] = rand() % 256;
 
   return color;
 }
