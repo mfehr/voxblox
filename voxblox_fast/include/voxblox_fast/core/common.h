@@ -1,5 +1,5 @@
-#ifndef VOXBLOX_CORE_COMMON_H_
-#define VOXBLOX_CORE_COMMON_H_
+#ifndef VOXBLOX_FAST_CORE_COMMON_H_
+#define VOXBLOX_FAST_CORE_COMMON_H_
 
 #include <memory>
 #include <set>
@@ -217,4 +217,4 @@ inline std::shared_ptr<Type> aligned_shared(Arguments&&... arguments) {
 }
 }  // namespace voxblox
 
-#endif  // VOXBLOX_CORE_COMMON_H_
+#endif  // VOXBLOX_FAST_CORE_COMMON_H_
