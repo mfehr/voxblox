@@ -8,6 +8,10 @@
 #include "../../htwfsc_benchmarks/include/voxblox/integrator/tsdf_integrator_fast.h"
 #include "../../htwfsc_benchmarks/include/voxblox/simulation/sphere_simulator.h"
 
+#ifdef COUNTFLOPS
+extern flopcounter countflops;
+#endif
+
 using namespace voxblox;  // NOLINT
 
 class E2EBenchmark : public ::benchmark::Fixture {
@@ -73,6 +77,18 @@ class E2EBenchmark : public ::benchmark::Fixture {
 
 BENCHMARK_DEFINE_F(E2EBenchmark, BM_baseline_radius)(benchmark::State& state) {
   const double radius = static_cast<double>(state.range(0)) / 2.0;
+  #ifdef COUNTFLOPS
+  countflops.ResetCastRay();
+  countflops.ResetUpdateTsdf();
+  baseline_integrator_->integratePointCloud(T_G_C, sphere_points_C, colors_);
+  state.counters["castray-flops"] = countflops.castray_adds+countflops.castray_divs;
+  state.counters["updatetsdf-flops"] = countflops.updatetsdf_adds+countflops.updatetsdf_muls+countflops.updatetsdf_divs+countflops.updatetsdf_sqrts;
+  countflops.ResetCastRay();
+  countflops.ResetUpdateTsdf();
+  baseline_integrator_->integratePointCloud(T_G_C, sphere_points_C, colors_);
+  state.counters["castray-flops2"] = countflops.castray_adds+countflops.castray_divs;
+  state.counters["updatetsdf-flops2"] = countflops.updatetsdf_adds+countflops.updatetsdf_muls+countflops.updatetsdf_divs+countflops.updatetsdf_sqrts;
+  #endif
   state.counters["radius_cm"] = radius * 100;
   CreateSphere(radius, kNumPoints);
   while (state.KeepRunning()) {

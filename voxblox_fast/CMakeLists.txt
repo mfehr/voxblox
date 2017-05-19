@@ -57,29 +57,29 @@ target_link_libraries(${PROJECT_NAME} ${PROTOBUF_LIBRARIES})
 # #########
 # # TESTS #
 # #########
-add_custom_target(test_data)
-add_custom_command(TARGET test_data
-                  COMMAND rm -rf test_data
-                  COMMAND mkdir -p test_data
-                  COMMAND cp -r ${CMAKE_SOURCE_DIR}/test/test_data/*
-                                test_data/ || :)
+add_custom_target(test_data_fast)
+add_custom_command(TARGET test_data_fast
+                  COMMAND rm -rf test_data_fast
+                  COMMAND mkdir -p test_data_fast
+                  COMMAND cp -r ${CMAKE_SOURCE_DIR}/test/test_data_fast/*
+                                test_data_fast/ || :)
 
 #add_definitions(-DVISUALIZE_UNIT_TEST_RESULTS)
 
-catkin_add_gtest(test_tsdf_map
+catkin_add_gtest(test_tsdf_map_fast
   test/test_tsdf_map.cc
 )
-target_link_libraries(test_tsdf_map ${PROJECT_NAME} ${catkin_LIBRARIES})
+target_link_libraries(test_tsdf_map_fast ${PROJECT_NAME} ${catkin_LIBRARIES})
 
-catkin_add_gtest(test_protobuf
+catkin_add_gtest(test_protobuf_fast
   test/test_protobuf.cc
 )
-target_link_libraries(test_protobuf ${PROJECT_NAME} ${catkin_LIBRARIES})
+target_link_libraries(test_protobuf_fast ${PROJECT_NAME} ${catkin_LIBRARIES})
 
-catkin_add_gtest(test_tsdf_interpolator
+catkin_add_gtest(test_tsdf_interpolator_fast
   test/test_tsdf_interpolator.cc
 )
-target_link_libraries(test_tsdf_interpolator ${PROJECT_NAME} ${catkin_LIBRARIES})
+target_link_libraries(test_tsdf_interpolator_fast ${PROJECT_NAME} ${catkin_LIBRARIES})
 
 ##########
 # EXPORT #
