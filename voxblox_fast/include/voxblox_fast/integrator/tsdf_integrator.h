@@ -2,14 +2,14 @@
 #define VOXBLOX_FAST_INTEGRATOR_TSDF_INTEGRATOR_H_
 
 #include <algorithm>
-#include <vector>
 #include <iostream>
 #include <queue>
 #include <thread>
 #include <utility>
+#include <vector>
 
-#include <Eigen/Core>
 #include <glog/logging.h>
+#include <Eigen/Core>
 
 #include "voxblox_fast/core/layer.h"
 #include "voxblox_fast/core/voxel.h"
@@ -131,15 +131,24 @@ class TsdfIntegrator {
 
   void integratePointCloud(const Transformation& T_G_C,
                            const Pointcloud& points_C, const Colors& colors) {
-    DCHECK_EQ(points_C.size(), colors.size());
+    const size_t num_points = points_C.size();
+    DCHECK_EQ(num_points, colors.size());
     timing::Timer integrate_timer("integrate");
 
-    const Point& origin = T_G_C.getPosition();
+    const size_t voxels_per_side_minus_one = voxels_per_side_ - 1u;
 
-    for (size_t pt_idx = 0; pt_idx < points_C.size(); ++pt_idx) {
+    const Point& origin = T_G_C.getPosition();
+    const FloatingPoint truncation_distance =
+        config_.default_truncation_distance;
+
+    std::vector<PointQuadruple> start_end_point_vector(num_points);
+    BlockHashMapType<std::vector<size_t>>::type rays_per_block;
+
+    for (size_t pt_idx = 0u; pt_idx < num_points; ++pt_idx) {
       const Point& point_C = points_C[pt_idx];
       const Point point_G = T_G_C * point_C;
       const Color& color = colors[pt_idx];
+      PointQuadruple& start_end_points = start_end_point_vector[pt_idx];
 
       FloatingPoint ray_distance = (point_G - origin).norm();
       if (ray_distance < config_.min_ray_length_m) {
@@ -149,10 +158,7 @@ class TsdfIntegrator {
         continue;
       }
 
-      FloatingPoint truncation_distance = config_.default_truncation_distance;
-
       const Ray unit_ray = (point_G - origin).normalized();
-
       const Point ray_end = point_G + unit_ray * truncation_distance;
       const Point ray_start = config_.voxel_carving_enabled
                                   ? origin
@@ -161,48 +167,66 @@ class TsdfIntegrator {
       const Point start_scaled = ray_start * voxel_size_inv_;
       const Point end_scaled = ray_end * voxel_size_inv_;
 
-      IndexVector global_voxel_indices;
-      timing::Timer cast_ray_timer("integrate/cast_ray");
-      castRay(start_scaled, end_scaled, &global_voxel_indices);
-      cast_ray_timer.Stop();
+      start_end_points.col(0) = point_G;
+      start_end_points.col(1) = point_C;
+      start_end_points.col(2) = start_scaled;
+      start_end_points.col(3) = end_scaled;
 
-      timing::Timer update_voxels_timer("integrate/update_voxels");
+      const Point start_scaled_block = ray_start * block_size_inv_;
+      const Point end_scaled_block = ray_end * block_size_inv_;
 
-      BlockIndex last_block_idx = BlockIndex::Zero();
-      Block<TsdfVoxel>::Ptr block;
+      IndexVector block_indices;
+      castRay(start_scaled_block, end_scaled_block, &block_indices);
 
-      for (const AnyIndex& global_voxel_idx : global_voxel_indices) {
-        BlockIndex block_idx = getBlockIndexFromGlobalVoxelIndex(
-            global_voxel_idx, voxels_per_side_inv_);
-        VoxelIndex local_voxel_idx =
-            getLocalFromGlobalVoxelIndex(global_voxel_idx, voxels_per_side_);
-
-        if (local_voxel_idx.x() < 0) {
-          local_voxel_idx.x() += voxels_per_side_;
-        }
-        if (local_voxel_idx.y() < 0) {
-          local_voxel_idx.y() += voxels_per_side_;
-        }
-        if (local_voxel_idx.z() < 0) {
-          local_voxel_idx.z() += voxels_per_side_;
-        }
-
-        if (!block || block_idx != last_block_idx) {
-          block = layer_->allocateBlockPtrByIndex(block_idx);
-          block->updated() = true;
-          last_block_idx = block_idx;
-        }
-
-        const Point voxel_center_G =
-            block->computeCoordinatesFromVoxelIndex(local_voxel_idx);
-        TsdfVoxel& tsdf_voxel = block->getVoxelByVoxelIndex(local_voxel_idx);
-
-        const float weight =
-            getVoxelWeight(point_C, point_G, origin, voxel_center_G);
-        updateTsdfVoxel(origin, point_C, point_G, voxel_center_G, color,
-                        truncation_distance, weight, &tsdf_voxel);
+      for (const BlockIndex& block_idx : block_indices) {
+        rays_per_block[block_idx].push_back(pt_idx);
       }
-      update_voxels_timer.Stop();
+    }
+
+    for (const std::pair<BlockIndex, std::vector<size_t>>& block_rays :
+         rays_per_block) {
+      const BlockIndex& block_idx = block_rays.first;
+      Block<TsdfVoxel>::Ptr block = layer_->allocateBlockPtrByIndex(block_idx);
+
+      AnyIndex min_idx = block_idx.array() * voxels_per_side_;
+      AnyIndex max_idx = min_idx.array() + voxels_per_side_minus_one;
+
+      // std::cout << "Block " << block_idx.transpose() << " is traversed by "
+      //           << block_rays.second.size() << " rays." << std::endl;
+
+      // std::cout << "min_idx: " << min_idx.transpose() << std::endl;
+      // std::cout << "max_idx: " << max_idx.transpose() << std::endl;
+
+      for (const size_t pt_idx : block_rays.second) {
+        const PointQuadruple& start_end_points = start_end_point_vector[pt_idx];
+        const Color& color = colors[pt_idx];
+
+        const Point& point_G = start_end_points.col(0);
+        const Point& point_C = start_end_points.col(1);
+        const Point& start_scaled = start_end_points.col(2);
+        const Point& end_scaled = start_end_points.col(3);
+
+        // TODO(mfehr): write a castRay function that only raytraces a BLOCK!
+        IndexVector local_voxel_indices;
+        castRayInVolume(start_scaled, end_scaled, min_idx, max_idx,
+                        &local_voxel_indices);
+
+        timing::Timer update_voxels_timer("integrate/update_voxels");
+        for (const AnyIndex& local_voxel_idx : local_voxel_indices) {
+          // std::cout << "Local voxel idx: " << local_voxel_idx.transpose()
+          //           << std::endl;
+
+          const Point voxel_center_G =
+              block->computeCoordinatesFromVoxelIndex(local_voxel_idx);
+          TsdfVoxel& tsdf_voxel = block->getVoxelByVoxelIndex(local_voxel_idx);
+
+          const float weight =
+              getVoxelWeight(point_C, point_G, origin, voxel_center_G);
+          updateTsdfVoxel(origin, point_C, point_G, voxel_center_G, color,
+                          truncation_distance, weight, &tsdf_voxel);
+        }
+        update_voxels_timer.Stop();
+      }
     }
     integrate_timer.Stop();
   }

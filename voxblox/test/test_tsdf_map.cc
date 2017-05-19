@@ -30,6 +30,20 @@ TEST_F(TsdfMapTest, BlockAllocation) {
   EXPECT_EQ(2, map_->getTsdfLayerPtr()->getNumberOfAllocatedBlocks());
 }
 
+
+TEST_F(TsdfMapTest, BlockIndexToOriginAndBack) {
+  constexpr FloatingPoint kGridSize = 0.5;
+  constexpr FloatingPoint kGridSizeInv = 1. / kGridSize;
+
+  AnyIndex block_index(2.0, 3.0, 7.0);
+  const Point origin = getOriginPointFromGridIndex(block_index, kGridSize);
+  AnyIndex block_index_after = getGridIndexFromOriginPoint(origin, kGridSizeInv);
+  const Point origin_after = getOriginPointFromGridIndex(block_index_after, kGridSize);
+
+  EXPECT_EQ(block_index_after, block_index);
+  EXPECT_LT((origin - origin_after).norm(), 1e-6);
+}
+
 TEST_F(TsdfMapTest, IndexLookups) {
   Block<TsdfVoxel>::Ptr block =
       map_->getTsdfLayerPtr()->allocateNewBlockByCoordinates(

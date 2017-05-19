@@ -19,6 +19,10 @@ typedef double FloatingPoint;
 typedef int IndexElement;
 
 typedef Eigen::Matrix<FloatingPoint, 3, 1> Point;
+typedef Eigen::Matrix<FloatingPoint, 3, 2> PointPair;
+typedef Eigen::Matrix<FloatingPoint, 3, 3> PointTriple;
+typedef Eigen::Matrix<FloatingPoint, 3, 4> PointQuadruple;
+
 typedef Eigen::Matrix<FloatingPoint, 3, 1> Ray;
 
 typedef Eigen::Matrix<IndexElement, 3, 1> AnyIndex;
