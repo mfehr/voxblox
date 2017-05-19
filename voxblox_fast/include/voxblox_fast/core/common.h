@@ -1,6 +1,8 @@
 #ifndef VOXBLOX_FAST_CORE_COMMON_H_
 #define VOXBLOX_FAST_CORE_COMMON_H_
 
+#include <immintrin.h>
+
 #include <memory>
 #include <set>
 #include <unordered_map>
@@ -78,26 +80,40 @@ struct Color {
 
   uint8_t rgba[4];
 
-  static Color blendTwoColors(const Color& first_color,
+  static void blendTwoColors(const Color& first_color,
                               FloatingPoint first_weight,
                               const Color& second_color,
-                              FloatingPoint second_weight) {
-    FloatingPoint total_weight = first_weight + second_weight;
+                              FloatingPoint second_weight,
+                              Color* new_color) {
+    const FloatingPoint total_weight = first_weight + second_weight;
 
     first_weight /= total_weight;
     second_weight /= total_weight;
 
-    Color new_color;
-    new_color.rgba[0] = static_cast<uint8_t>(
-        round(first_color.rgba[0] * first_weight + second_color.rgba[0] * second_weight));
-    new_color.rgba[1] = static_cast<uint8_t>(
-        round(first_color.rgba[1] * first_weight + second_color.rgba[1] * second_weight));
-    new_color.rgba[2] = static_cast<uint8_t>(
-        round(first_color.rgba[2] * first_weight + second_color.rgba[2] * second_weight));
-    new_color.rgba[3] = static_cast<uint8_t>(
-        round(first_color.rgba[3] * first_weight + second_color.rgba[3] * second_weight));
+    __m128i c1v = _mm_setr_epi32(first_color.rgba[0], first_color.rgba[1],
+                                first_color.rgba[2], first_color.rgba[3]);
+    __m128i c2v = _mm_setr_epi32(second_color.rgba[0], second_color.rgba[1],
+                                second_color.rgba[2], second_color.rgba[3]);
 
-    return new_color;
+    __m256d c1dv = _mm256_cvtepi32_pd(c1v);
+    __m256d c2dv = _mm256_cvtepi32_pd(c2v);
+
+    __m256d weight_1 = _mm256_set1_pd(first_weight);
+    __m256d color_1 = _mm256_mul_pd(c1dv, weight_1);
+
+    __m256d weight_2 = _mm256_set1_pd(second_weight);
+    __m256d color_2 = _mm256_mul_pd(c2dv, weight_2);
+
+    __m256d color_new_vec = _mm256_add_pd(color_1, color_2);
+    __m128i color_new_int = _mm256_cvttpd_epi32(color_new_vec);
+
+    /*int a[4];
+    _mm_maskstore_epi32(a, mask, color_new_int);*/
+
+    __m128i pack1 = _mm_packus_epi32 (color_new_int, color_new_int);
+    __m128i pack2 = _mm_packus_epi16 (pack1, pack1);
+
+    *(int*)new_color->rgba = _mm_extract_epi32(pack2, 0);
   }
 
   // Now a bunch of static colors to use! :)
