@@ -10,6 +10,54 @@
 #include "voxblox/core/common.h"
 #include "voxblox/utils/timing.h"
 
+#define COUNTFLOPS
+
+#ifdef COUNTFLOPS
+class flopcounter
+{
+public:
+    flopcounter()
+        : castray_adds(0),castray_muls(0),castray_divs(0),castray_runs(0),
+          castray_whileruns(0),
+          updatetsdf_adds(0),updatetsdf_muls(0),updatetsdf_divs(0),updatetsdf_sqrts(0),updatetsdf_runs(0)
+        {}
+
+    void ResetCastRay()
+    {
+//        printf("ResetCastRay");
+        castray_adds = 0;
+        castray_muls = 0;
+        castray_divs = 0;
+        castray_runs = 0;
+        castray_whileruns = 0;
+    }
+
+    void ResetUpdateTsdf()
+    {
+//        printf("ResetUpdateTsdf");
+        updatetsdf_adds = 0;
+        updatetsdf_muls = 0;
+        updatetsdf_divs = 0;
+        updatetsdf_sqrts = 0;
+        updatetsdf_runs = 0;
+    }
+
+    size_t castray_adds;
+    size_t castray_muls;
+    size_t castray_divs;
+    size_t castray_runs;
+    size_t castray_whileruns;
+
+    size_t updatetsdf_adds;
+    size_t updatetsdf_muls;
+    size_t updatetsdf_divs;
+    size_t updatetsdf_sqrts;
+    size_t updatetsdf_runs;
+};
+
+static flopcounter countflops;
+#endif
+
 namespace voxblox {
 
 // This function assumes PRE-SCALED coordinates, where one unit = one voxel
@@ -30,6 +78,9 @@ inline void castRay(
 
 
   const Ray ray_scaled = end_scaled - start_scaled;
+  #ifdef COUNTFLOPS
+  countflops.castray_adds += 3;
+  #endif
 
   const AnyIndex ray_step_signs(signum(ray_scaled.x()), signum(ray_scaled.y()),
                           signum(ray_scaled.z()));
@@ -39,9 +90,15 @@ inline void castRay(
                           std::max(0, ray_step_signs.z()));
 
   const Point start_scaled_shifted = start_scaled - start_index.cast<FloatingPoint>();
+  #ifdef COUNTFLOPS
+  countflops.castray_adds += 3;
+  #endif
 
   const Ray distance_to_boundaries(corrected_step.cast<FloatingPoint>() -
                              start_scaled_shifted);
+  #ifdef COUNTFLOPS
+  countflops.castray_adds += 3;
+  #endif
 
   Ray t_to_next_boundary((std::abs(ray_scaled.x()) < kTolerance)
                              ? 2.0
@@ -53,10 +110,20 @@ inline void castRay(
                              ? 2.0
                              : distance_to_boundaries.z() / ray_scaled.z());
 
+  #ifdef COUNTFLOPS
+  if(std::abs(ray_scaled.x()) >= kTolerance) countflops.castray_divs++;
+  if(std::abs(ray_scaled.y()) >= kTolerance) countflops.castray_divs++;
+  if(std::abs(ray_scaled.z()) >= kTolerance) countflops.castray_divs++;
+  #endif
+
   // Distance to cross one grid cell along the ray in t.
   // Same as absolute inverse value of delta_coord.
   const Ray t_step_size =
       ray_step_signs.cast<FloatingPoint>().cwiseQuotient(ray_scaled);
+
+  #ifdef COUNTFLOPS
+  countflops.castray_divs += 3;
+  #endif
 
   AnyIndex curr_index = start_index;
   indices->push_back(curr_index);
@@ -70,8 +137,17 @@ inline void castRay(
     curr_index[t_min_idx] += ray_step_signs[t_min_idx];
     t_to_next_boundary[t_min_idx] += t_step_size[t_min_idx];
 
+  #ifdef COUNTFLOPS
+  countflops.castray_adds += 2;
+  countflops.castray_whileruns += 1;
+  #endif
+
     indices->push_back(curr_index);
   }
+
+  #ifdef COUNTFLOPS
+  countflops.castray_runs++;
+  #endif
 }
 
 

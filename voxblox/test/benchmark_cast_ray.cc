@@ -13,6 +13,10 @@
 
 using namespace voxblox;  // NOLINT
 
+#ifdef COUNTFLOPS
+extern flopcounter countflops;
+#endif
+
 class CastRayBenchmark : public ::benchmark::Fixture {
  public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
@@ -43,6 +47,9 @@ class CastRayBenchmark : public ::benchmark::Fixture {
 BENCHMARK_DEFINE_F(CastRayBenchmark, BM_baseline_radius)
 (benchmark::State& state) {
   const double radius = static_cast<double>(state.range(0)) / 2.0;
+  #ifdef COUNTFLOPS
+  countflops.ResetCastRay();
+  #endif
   state.counters["radius_cm"] = radius * 100;
   CreateSphere(radius, kNumPoints);
   while (state.KeepRunning()) {
@@ -52,6 +59,15 @@ BENCHMARK_DEFINE_F(CastRayBenchmark, BM_baseline_radius)
       castRay(origin, point, &indices);
     }
   }
+  #ifdef COUNTFLOPS
+//  state.counters["castray-adds"] = countflops.castray_adds;
+//  state.counters["castray-divs"] = countflops.castray_divs;
+//  state.counters["castray-runs"] = countflops.castray_runs;
+//  state.counters["castray-whileruns"] = countflops.castray_whileruns;
+//  state.counters["castray-whileruns/it"] = (double)countflops.castray_whileruns/(double)countflops.castray_runs;
+//  state.counters["castray-flops/it"] = (double)(countflops.castray_adds+countflops.castray_divs)/(double)countflops.castray_runs;
+  state.counters["castray-flops"] = countflops.castray_adds+countflops.castray_divs;
+  #endif
 }
 BENCHMARK_REGISTER_F(CastRayBenchmark, BM_baseline_radius)
     ->DenseRange(1, 10, 1);
@@ -59,6 +75,9 @@ BENCHMARK_REGISTER_F(CastRayBenchmark, BM_baseline_radius)
 BENCHMARK_DEFINE_F(CastRayBenchmark, BM_fast_radius)(benchmark::State& state) {
   const double radius = static_cast<double>(state.range(0)) / 2.0;
   state.counters["radius_cm"] = radius * 100;
+  #ifdef COUNTFLOPS
+  countflops.ResetCastRay();
+  #endif
   CreateSphere(radius, kNumPoints);
   while (state.KeepRunning()) {
     const Point& origin = T_G_C_.getPosition();
@@ -67,6 +86,10 @@ BENCHMARK_DEFINE_F(CastRayBenchmark, BM_fast_radius)(benchmark::State& state) {
       fast::castRay(origin, point, &indices);
     }
   }
+  #ifdef COUNTFLOPS
+//  state.counters["castray-flops/it"] = (double)(countflops.castray_adds+countflops.castray_divs)/(double)countflops.castray_runs;
+  state.counters["castray-flops"] = countflops.castray_adds+countflops.castray_divs;
+  #endif
 }
 BENCHMARK_REGISTER_F(CastRayBenchmark, BM_fast_radius)->DenseRange(1, 10, 1);
 
@@ -77,6 +100,9 @@ BENCHMARK_REGISTER_F(CastRayBenchmark, BM_fast_radius)->DenseRange(1, 10, 1);
 BENCHMARK_DEFINE_F(CastRayBenchmark, BM_baseline_num_points)
 (benchmark::State& state) {
   const size_t num_points = static_cast<size_t>(state.range(0));
+#ifdef COUNTFLOPS
+countflops.ResetCastRay();
+#endif
   CreateSphere(kRadius, num_points);
   state.counters["num_points"] = sphere_points_G_.size();
   while (state.KeepRunning()) {
@@ -86,6 +112,10 @@ BENCHMARK_DEFINE_F(CastRayBenchmark, BM_baseline_num_points)
       castRay(origin, point, &indices);
     }
   }
+#ifdef COUNTFLOPS
+//state.counters["castray-flops/it"] = (double)(countflops.castray_adds+countflops.castray_divs)/(double)countflops.castray_runs;
+state.counters["castray-flops"] = countflops.castray_adds+countflops.castray_divs;
+#endif
 }
 BENCHMARK_REGISTER_F(CastRayBenchmark, BM_baseline_num_points)
     ->RangeMultiplier(2)
@@ -93,6 +123,9 @@ BENCHMARK_REGISTER_F(CastRayBenchmark, BM_baseline_num_points)
 
 BENCHMARK_DEFINE_F(CastRayBenchmark, BM_fast)(benchmark::State& state) {
   const size_t num_points = static_cast<size_t>(state.range(0));
+#ifdef COUNTFLOPS
+countflops.ResetCastRay();
+#endif
   CreateSphere(kRadius, num_points);
   state.counters["num_points"] = sphere_points_G_.size();
   while (state.KeepRunning()) {
@@ -102,6 +135,10 @@ BENCHMARK_DEFINE_F(CastRayBenchmark, BM_fast)(benchmark::State& state) {
       fast::castRay(origin, point, &indices);
     }
   }
+#ifdef COUNTFLOPS
+//state.counters["castray-flops/it"] = (double)(countflops.castray_adds+countflops.castray_divs)/(double)countflops.castray_runs;
+  state.counters["castray-flops"] = countflops.castray_adds+countflops.castray_divs;
+#endif
 }
 BENCHMARK_REGISTER_F(CastRayBenchmark, BM_fast)
     ->RangeMultiplier(2)

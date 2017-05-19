@@ -8,6 +8,10 @@
 #include "voxblox/integrator/tsdf_integrator_fast.h"
 #include "voxblox/simulation/sphere_simulator.h"
 
+#ifdef COUNTFLOPS
+extern flopcounter countflops;
+#endif
+
 using namespace voxblox;  // NOLINT
 
 class E2EBenchmark : public ::benchmark::Fixture {
@@ -74,20 +78,49 @@ class E2EBenchmark : public ::benchmark::Fixture {
 BENCHMARK_DEFINE_F(E2EBenchmark, BM_baseline_radius)(benchmark::State& state) {
   const double radius = static_cast<double>(state.range(0)) / 2.0;
   state.counters["radius_cm"] = radius * 100;
+  #ifdef COUNTFLOPS
+  countflops.ResetCastRay();
+  countflops.ResetUpdateTsdf();
+  #endif
   CreateSphere(radius, kNumPoints);
   while (state.KeepRunning()) {
     baseline_integrator_->integratePointCloud(T_G_C, sphere_points_C, colors_);
   }
+  #ifdef COUNTFLOPS
+//  state.counters["castray-adds"] = countflops.castray_adds;
+//  state.counters["castray-divs"] = countflops.castray_divs;
+//  state.counters["castray-runs"] = countflops.castray_runs;
+//  state.counters["castray-adds/it"] = (double)(countflops.castray_adds)/(double)countflops.castray_runs;
+//  state.counters["castray-divs/it"] = (double)(countflops.castray_divs)/(double)countflops.castray_runs;
+//  state.counters["castray-whileruns/it"] = (double)(countflops.castray_whileruns)/(double)countflops.castray_runs;
+//  state.counters["castray-flops/it"] = (double)(countflops.castray_adds+countflops.castray_divs)/(double)countflops.castray_runs;
+  state.counters["castray-flops"] = countflops.castray_adds+countflops.castray_divs;
+//  state.counters["updatetsdf-adds"] = countflops.updatetsdf_adds;
+//  state.counters["updatetsdf-muls"] = countflops.updatetsdf_muls;
+//  state.counters["updatetsdf-divs"] = countflops.updatetsdf_divs;
+//  state.counters["updatetsdf-sqrts"] = countflops.updatetsdf_sqrts;
+//  state.counters["updatetsdf-runs"] = countflops.updatetsdf_runs;
+//  state.counters["updatetsdf-flops/it"] = (double)(countflops.updatetsdf_adds+countflops.updatetsdf_muls+countflops.updatetsdf_divs+countflops.updatetsdf_sqrts)/(double)countflops.updatetsdf_runs;
+  state.counters["updatetsdf-flops"] = countflops.updatetsdf_adds+countflops.updatetsdf_muls+countflops.updatetsdf_divs+countflops.updatetsdf_sqrts;
+  #endif
 }
 BENCHMARK_REGISTER_F(E2EBenchmark, BM_baseline_radius)->DenseRange(1, 10, 1);
 
 BENCHMARK_DEFINE_F(E2EBenchmark, BM_fast_radius)(benchmark::State& state) {
   const double radius = static_cast<double>(state.range(0)) / 2.0;
   state.counters["radius_cm"] = radius * 100;
+#ifdef COUNTFLOPS
+countflops.ResetCastRay();
+countflops.ResetUpdateTsdf();
+#endif
   CreateSphere(radius, kNumPoints);
   while (state.KeepRunning()) {
     fast_integrator_->integratePointCloud(T_G_C, sphere_points_C, colors_);
   }
+#ifdef COUNTFLOPS
+state.counters["castray-flops"] = countflops.castray_adds+countflops.castray_divs;
+state.counters["updatetsdf-flops"] = countflops.updatetsdf_adds+countflops.updatetsdf_muls+countflops.updatetsdf_divs+countflops.updatetsdf_sqrts;
+#endif
 }
 BENCHMARK_REGISTER_F(E2EBenchmark, BM_fast_radius)->DenseRange(1, 10, 1);
 
@@ -98,11 +131,19 @@ BENCHMARK_REGISTER_F(E2EBenchmark, BM_fast_radius)->DenseRange(1, 10, 1);
 BENCHMARK_DEFINE_F(E2EBenchmark, BM_baseline_num_points)
 (benchmark::State& state) {
   const size_t num_points = static_cast<double>(state.range(0));
+#ifdef COUNTFLOPS
+countflops.ResetCastRay();
+countflops.ResetUpdateTsdf();
+#endif
   CreateSphere(kRadius, num_points);
   state.counters["num_points"] = sphere_points_C.size();
   while (state.KeepRunning()) {
     baseline_integrator_->integratePointCloud(T_G_C, sphere_points_C, colors_);
   }
+#ifdef COUNTFLOPS
+state.counters["castray-flops"] = countflops.castray_adds+countflops.castray_divs;
+state.counters["updatetsdf-flops"] = countflops.updatetsdf_adds+countflops.updatetsdf_muls+countflops.updatetsdf_divs+countflops.updatetsdf_sqrts;
+#endif
 }
 BENCHMARK_REGISTER_F(E2EBenchmark, BM_baseline_num_points)
     ->RangeMultiplier(2)
@@ -110,11 +151,19 @@ BENCHMARK_REGISTER_F(E2EBenchmark, BM_baseline_num_points)
 
 BENCHMARK_DEFINE_F(E2EBenchmark, BM_fast_num_points)(benchmark::State& state) {
   const size_t num_points = static_cast<double>(state.range(0));
+#ifdef COUNTFLOPS
+countflops.ResetCastRay();
+countflops.ResetUpdateTsdf();
+#endif
   CreateSphere(kRadius, num_points);
   state.counters["num_points"] = sphere_points_C.size();
   while (state.KeepRunning()) {
     fast_integrator_->integratePointCloud(T_G_C, sphere_points_C, colors_);
   }
+#ifdef COUNTFLOPS
+state.counters["castray-flops"] = countflops.castray_adds+countflops.castray_divs;
+state.counters["updatetsdf-flops"] = countflops.updatetsdf_adds+countflops.updatetsdf_muls+countflops.updatetsdf_divs+countflops.updatetsdf_sqrts;
+#endif
 }
 BENCHMARK_REGISTER_F(E2EBenchmark, BM_fast_num_points)
     ->RangeMultiplier(2)

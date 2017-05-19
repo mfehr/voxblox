@@ -16,6 +16,10 @@
 #include "voxblox/integrator/integrator_utils.h"
 #include "voxblox/utils/timing.h"
 
+#ifdef COUNTFLOPS
+extern flopcounter countflops;
+#endif
+
 namespace voxblox {
 
 class TsdfIntegrator {
@@ -86,9 +90,26 @@ class TsdfIntegrator {
     Point v_voxel_origin = voxel_center - origin;
     Point v_point_origin = point_G - origin;
 
+#ifdef COUNTFLOPS
+    countflops.updatetsdf_adds += 6;
+#endif
+
     FloatingPoint dist_G = v_point_origin.norm();
+
+#ifdef COUNTFLOPS
+    countflops.updatetsdf_adds += 2;
+    countflops.updatetsdf_muls += 3;
+    countflops.updatetsdf_sqrts += 1;
+#endif
+
     // projection of a (v_voxel_origin) onto b (v_point_origin)
     FloatingPoint dist_G_V = v_voxel_origin.dot(v_point_origin) / dist_G;
+
+#ifdef COUNTFLOPS
+    countflops.updatetsdf_adds += 2;
+    countflops.updatetsdf_muls += 3;
+    countflops.updatetsdf_divs += 1;
+#endif
 
     float sdf = static_cast<float>(dist_G - dist_G_V);
 
@@ -101,19 +122,45 @@ class TsdfIntegrator {
       updated_weight = weight * (truncation_distance + sdf) /
                        (truncation_distance - dropoff_epsilon);
       updated_weight = std::max(updated_weight, 0.0f);
+
+        #ifdef COUNTFLOPS
+            countflops.updatetsdf_adds += 2;
+            countflops.updatetsdf_muls += 1;
+            countflops.updatetsdf_divs += 1;
+        #endif
     }
 
     const float new_weight = tsdf_voxel->weight + updated_weight;
+#ifdef COUNTFLOPS
+    countflops.updatetsdf_adds += 1;
+#endif
+
     tsdf_voxel->color = Color::blendTwoColors(
         tsdf_voxel->color, tsdf_voxel->weight, color, updated_weight);
+
+#ifdef COUNTFLOPS
+    countflops.updatetsdf_adds += 1;
+    countflops.updatetsdf_divs += 2;
+#endif
+
     const float new_sdf =
         (sdf * updated_weight + tsdf_voxel->distance * tsdf_voxel->weight) /
         new_weight;
+
+#ifdef COUNTFLOPS
+    countflops.updatetsdf_adds += 1;
+    countflops.updatetsdf_muls += 2;
+    countflops.updatetsdf_divs += 1;
+#endif
 
     tsdf_voxel->distance = (new_sdf > 0.0)
                                ? std::min(truncation_distance, new_sdf)
                                : std::max(-truncation_distance, new_sdf);
     tsdf_voxel->weight = std::min(config_.max_weight, new_weight);
+
+#ifdef COUNTFLOPS
+    countflops.updatetsdf_runs += 1;
+#endif
   }
 
   inline float computeDistance(const Point& origin, const Point& point_G,
