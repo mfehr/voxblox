@@ -8,8 +8,6 @@
 #include <thread>
 #include <utility>
 
-#include "xmmintrin.h"
-
 #include <Eigen/Core>
 #include <glog/logging.h>
 
