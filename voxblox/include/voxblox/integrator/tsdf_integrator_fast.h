@@ -8,6 +8,8 @@
 #include <thread>
 #include <utility>
 
+#include <immintrin.h>
+
 #include <Eigen/Core>
 #include <glog/logging.h>
 
@@ -88,8 +90,16 @@ class TsdfIntegrator {
     return 0.0;
   }
 
-  inline void updateTsdfVoxel(const Point& origin, const Point& point_C,
-                              const Point& point_G, const Point& voxel_center,
+  inline FloatingPoint dotProduct(const __m256& x, const __m256& y) {
+    __m256d xy = _mm256_mul_pd(x, y);
+    __m256d hadd_xy = _mm256_hadd_pd(xy, xy);
+    __m128d hadd_xy_hi128 = _mm256_extractf128_pd(hadd_xy, 1);
+    __m128d dotproduct = _mm_add_pd(_mm256_castpd256_pd128(hadd_xy), hadd_xy_hi128);
+    return _mm_cvtss_f32(dotproduct);
+  }
+
+  inline void updateTsdfVoxel(const __m256& origin, const __m256& point_C,
+                              const __m256& point_G, const __m256& voxel_center,
                               const Color& color,
                               const float truncation_distance,
                               const float weight, TsdfVoxel* tsdf_voxel) {
@@ -97,12 +107,12 @@ class TsdfIntegrator {
     // To do this, project the voxel_center onto the ray from origin to point G.
     // Then check if the the magnitude of the vector is smaller or greater than
     // the original distance...
-    Point v_voxel_origin = voxel_center - origin;
-    Point v_point_origin = point_G - origin;
+    __m256 v_voxel_origin = _mm256_sub_pd(voxel_center, origin);
+    __m256 v_point_origin = _mm256_sub_pd(point_G, origin);
 
-    FloatingPoint dist_G = v_point_origin.norm();
+    FloatingPoint dist_G = sqrt(dotProduct(v_point_origin, v_point_origin));
     // projection of a (v_voxel_origin) onto b (v_point_origin)
-    FloatingPoint dist_G_V = v_voxel_origin.dot(v_point_origin) / dist_G;
+    FloatingPoint dist_G_V = dotProduct(v_voxel_origin, v_point_origin) / dist_G;
 
     float sdf = static_cast<float>(dist_G - dist_G_V);
 
@@ -145,6 +155,11 @@ class TsdfIntegrator {
     return sdf;
   }
 
+  inline __m256 loadPointToAvx(const Point& value) {
+    __m256 mask = _mm256_set_epi64x(0,-1,-1,-1);
+    return _mm256_maskload_pd(value.data(), mask);
+  }
+
   void integratePointCloud(const Transformation& T_G_C,
                            const Pointcloud& points_C, const Colors& colors) {
     DCHECK_EQ(points_C.size(), colors.size());
@@ -157,7 +172,7 @@ class TsdfIntegrator {
       const Point point_G = T_G_C * point_C;
       const Color& color = colors[pt_idx];
 
-      FloatingPoint ray_distance = (point_G - origin).norm();
+      const FloatingPoint ray_distance = (point_G - origin).norm();
       if (ray_distance < config_.min_ray_length_m) {
         continue;
       } else if (ray_distance > config_.max_ray_length_m) {
@@ -165,7 +180,7 @@ class TsdfIntegrator {
         continue;
       }
 
-      FloatingPoint truncation_distance = config_.default_truncation_distance;
+      const FloatingPoint truncation_distance = config_.default_truncation_distance;
 
       const Ray unit_ray = (point_G - origin).normalized();
 
@@ -189,6 +204,10 @@ class TsdfIntegrator {
 
       BlockIndex last_block_idx = BlockIndex::Zero();
       Block<TsdfVoxel>::Ptr block;
+
+      __m256 origin_vec = loadPointToAvx(origin);
+      __m256 point_C_vec = loadPointToAvx(point_C);
+      __m256 point_G_vec = loadPointToAvx(point_G);
 
       for (const AnyIndex& global_voxel_idx : global_voxel_indices) {
         BlockIndex block_idx = getBlockIndexFromGlobalVoxelIndex(
@@ -216,7 +235,10 @@ class TsdfIntegrator {
             block->computeCoordinatesFromVoxelIndex(local_voxel_idx);
         TsdfVoxel& tsdf_voxel = block->getVoxelByVoxelIndex(local_voxel_idx);
 
-        updateTsdfVoxel(origin, point_C, point_G, voxel_center_G, color,
+
+        __m256 voxel_center_G_vec = loadPointToAvx(voxel_center_G);
+
+        updateTsdfVoxel(origin_vec, point_C_vec, point_G_vec, voxel_center_G_vec, color,
                         truncation_distance, weight, &tsdf_voxel);
       }
       update_voxels_timer.Stop();
@@ -268,10 +290,10 @@ class TsdfIntegrator {
     TsdfVoxel& tsdf_voxel =
         block->getVoxelByVoxelIndex(voxel_info.local_voxel_idx);
 
-    updateTsdfVoxel(origin, voxel_info.point_C, voxel_info.point_G,
-                    voxel_center_G, voxel_info.voxel.color,
-                    config_.default_truncation_distance,
-                    voxel_info.voxel.weight, &tsdf_voxel);
+//    updateTsdfVoxel(origin, voxel_info.point_C, voxel_info.point_G,
+//                    voxel_center_G, voxel_info.voxel.color,
+//                    config_.default_truncation_distance,
+//                    voxel_info.voxel.weight, &tsdf_voxel);
   }
 
   void integrateVoxel(
