@@ -77,6 +77,17 @@ class TsdfIntegrator {
     return 0.0;
   }
 
+  inline float getVoxelWeight(const Point& point_C) const {
+    if (config_.use_const_weight) {
+      return 1.0;
+    }
+    FloatingPoint dist_z = std::abs(point_C.z());
+    if (dist_z > 1e-6) {
+      return 1.0 / (dist_z * dist_z);
+    }
+    return 0.0;
+  }
+
   inline void updateTsdfVoxel(const Point& origin, const Point& point_C,
                               const Point& point_G, const Point& voxel_center,
                               const Color& color,
@@ -109,9 +120,11 @@ class TsdfIntegrator {
     const float new_weight = tsdf_voxel->weight + updated_weight;
     tsdf_voxel->color = Color::blendTwoColors(
         tsdf_voxel->color, tsdf_voxel->weight, color, updated_weight);
-    const float new_sdf =
-        (sdf * updated_weight + tsdf_voxel->distance * tsdf_voxel->weight) /
-        new_weight;
+
+    const float sdf_times_weight = sdf * updated_weight;
+    const float distance_times_weight = tsdf_voxel->distance * tsdf_voxel->weight;
+    const float temp_sum = sdf_times_weight + distance_times_weight;
+    const float new_sdf = temp_sum / new_weight;
 
     tsdf_voxel->distance = (new_sdf > 0.0)
                                ? std::min(truncation_distance, new_sdf)
@@ -169,6 +182,9 @@ class TsdfIntegrator {
       voxblox::fast::castRay(start_scaled, end_scaled, &global_voxel_indices);
       cast_ray_timer.Stop();
 
+      const float weight =
+          getVoxelWeight(point_C);
+
       timing::Timer update_voxels_timer("integrate/update_voxels");
 
       BlockIndex last_block_idx = BlockIndex::Zero();
@@ -200,8 +216,6 @@ class TsdfIntegrator {
             block->computeCoordinatesFromVoxelIndex(local_voxel_idx);
         TsdfVoxel& tsdf_voxel = block->getVoxelByVoxelIndex(local_voxel_idx);
 
-        const float weight =
-            getVoxelWeight(point_C, point_G, origin, voxel_center_G);
         updateTsdfVoxel(origin, point_C, point_G, voxel_center_G, color,
                         truncation_distance, weight, &tsdf_voxel);
       }
