@@ -90,15 +90,16 @@ class TsdfIntegrator {
     return 0.0;
   }
 
-  inline FloatingPoint dotProduct(const __m256& x, const __m256& y) {
+  inline void dotProduct(const __m256& x, const __m256& y, double* val) {
     __m256d xy = _mm256_mul_pd(x, y);
     __m256d hadd_xy = _mm256_hadd_pd(xy, xy);
     __m128d hadd_xy_hi128 = _mm256_extractf128_pd(hadd_xy, 1);
     __m128d dotproduct = _mm_add_pd(_mm256_castpd256_pd128(hadd_xy), hadd_xy_hi128);
-    return _mm_cvtss_f32(dotproduct);
+
+    _mm_store_sd(val, dotproduct);
   }
 
-  inline void updateTsdfVoxel(const __m256& origin, const __m256& point_C,
+  inline void updateTsdfVoxel(const __m256& origin,
                               const __m256& point_G, const __m256& voxel_center,
                               const Color& color,
                               const float truncation_distance,
@@ -110,9 +111,14 @@ class TsdfIntegrator {
     __m256 v_voxel_origin = _mm256_sub_pd(voxel_center, origin);
     __m256 v_point_origin = _mm256_sub_pd(point_G, origin);
 
-    FloatingPoint dist_G = sqrt(dotProduct(v_point_origin, v_point_origin));
+    double norm_sq;
+    dotProduct(v_point_origin, v_point_origin, &norm_sq);
+    FloatingPoint dist_G = sqrt(norm_sq);
+
     // projection of a (v_voxel_origin) onto b (v_point_origin)
-    FloatingPoint dist_G_V = dotProduct(v_voxel_origin, v_point_origin) / dist_G;
+    double dot;
+    dotProduct(v_voxel_origin, v_point_origin, &dot);
+    FloatingPoint dist_G_V = dot / dist_G;
 
     float sdf = static_cast<float>(dist_G - dist_G_V);
 
@@ -123,22 +129,20 @@ class TsdfIntegrator {
     const FloatingPoint dropoff_epsilon = voxel_size_;
     if (config_.use_weight_dropoff && sdf < -dropoff_epsilon) {
       updated_weight = weight * (truncation_distance + sdf) /
-                       (truncation_distance - dropoff_epsilon);
+          (truncation_distance - dropoff_epsilon);
       updated_weight = std::max(updated_weight, 0.0f);
     }
 
     const float new_weight = tsdf_voxel->weight + updated_weight;
     tsdf_voxel->color = Color::blendTwoColors(
         tsdf_voxel->color, tsdf_voxel->weight, color, updated_weight);
-
-    const float sdf_times_weight = sdf * updated_weight;
-    const float distance_times_weight = tsdf_voxel->distance * tsdf_voxel->weight;
-    const float temp_sum = sdf_times_weight + distance_times_weight;
-    const float new_sdf = temp_sum / new_weight;
+    const float new_sdf =
+        (sdf * updated_weight + tsdf_voxel->distance * tsdf_voxel->weight) /
+        new_weight;
 
     tsdf_voxel->distance = (new_sdf > 0.0)
-                               ? std::min(truncation_distance, new_sdf)
-                               : std::max(-truncation_distance, new_sdf);
+                                      ? std::min(truncation_distance, new_sdf)
+    : std::max(-truncation_distance, new_sdf);
     tsdf_voxel->weight = std::min(config_.max_weight, new_weight);
   }
 
@@ -155,8 +159,22 @@ class TsdfIntegrator {
     return sdf;
   }
 
+  typedef union { __m128 v; double a[2]; } uf2;
+  void printVec2(__m128 v, char const * name) {
+    uf2 u;
+    u.v = v;
+    printf("Vector %s: [ %f\t%f\t ]\n", name, u.a[0], u.a[1]);
+  }
+
+  typedef union { __m256 v; double a[4]; } uf;
+  void printVec4(__m256 v, char const * name) {
+    uf u;
+    u.v = v;
+    printf("Vector %s: [ %f\t%f\t%f\t%f ]\n", name, u.a[0], u.a[1], u.a[2], u.a[3]);
+  }
+
   inline __m256 loadPointToAvx(const Point& value) {
-    __m256 mask = _mm256_set_epi64x(0,-1,-1,-1);
+    __m256 mask = _mm256_set_epi64x(0, -1,-1,-1);
     return _mm256_maskload_pd(value.data(), mask);
   }
 
@@ -206,7 +224,6 @@ class TsdfIntegrator {
       Block<TsdfVoxel>::Ptr block;
 
       __m256 origin_vec = loadPointToAvx(origin);
-      __m256 point_C_vec = loadPointToAvx(point_C);
       __m256 point_G_vec = loadPointToAvx(point_G);
 
       for (const AnyIndex& global_voxel_idx : global_voxel_indices) {
@@ -238,7 +255,7 @@ class TsdfIntegrator {
 
         __m256 voxel_center_G_vec = loadPointToAvx(voxel_center_G);
 
-        updateTsdfVoxel(origin_vec, point_C_vec, point_G_vec, voxel_center_G_vec, color,
+        updateTsdfVoxel(origin_vec, point_G_vec, voxel_center_G_vec, color,
                         truncation_distance, weight, &tsdf_voxel);
       }
       update_voxels_timer.Stop();
@@ -290,6 +307,7 @@ class TsdfIntegrator {
     TsdfVoxel& tsdf_voxel =
         block->getVoxelByVoxelIndex(voxel_info.local_voxel_idx);
 
+    LOG(FATAL) << "aaa";
 //    updateTsdfVoxel(origin, voxel_info.point_C, voxel_info.point_G,
 //                    voxel_center_G, voxel_info.voxel.color,
 //                    config_.default_truncation_distance,

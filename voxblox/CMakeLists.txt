@@ -5,7 +5,7 @@ find_package(catkin_simple REQUIRED)
 catkin_simple()
 
 set(CMAKE_MACOSX_RPATH 0)
-add_definitions(-std=c++11 -Wno-sign-compare -Wno-unused-value -mavx2)
+add_definitions(-std=c++11 -Wno-sign-compare -Wno-unused-value -mavx2 -march=core-avx2)
 
 ############
 # PROTOBUF #
