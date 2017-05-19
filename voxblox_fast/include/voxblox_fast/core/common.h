@@ -1,5 +1,5 @@
-#ifndef VOXBLOX_FAST_CORE_COMMON_H_
-#define VOXBLOX_FAST_CORE_COMMON_H_
+#ifndef VOXBLOX_CORE_COMMON_H_
+#define VOXBLOX_CORE_COMMON_H_
 
 #include <memory>
 #include <set>
@@ -13,7 +13,6 @@
 #include <Eigen/Core>
 
 namespace voxblox_fast {
-
 // Types.
 typedef double FloatingPoint;
 typedef int IndexElement;
@@ -61,9 +60,12 @@ typedef Eigen::Matrix<FloatingPoint, 1, 8> InterpVector;
 // Type must allow negatives:
 typedef Eigen::Array<IndexElement, 3, 8> InterpIndexes;
 
+// Eigen only provides a SIMD unaryOps from version 3.3 on.
+#define EIGEN_HAS_SIMD_UNARY_OPS EIGEN_VERSION_AT_LEAST(2,3,3)
+
 struct Color {
   Color() : r(0), g(0), b(0), a(0) {}
-  Color(uint8_t _r, uint8_t _g, uint8_t _b) : Color(_r, _g, _b, 255) {}
+  Color(uint8_t _r, uint8_t _g, uint8_t _b) : Color(_r, _g, _b, 255u) {}
   Color(uint8_t _r, uint8_t _g, uint8_t _b, uint8_t _a)
       : r(_r), g(_g), b(_b), a(_a) {}
 
@@ -76,12 +78,21 @@ struct Color {
                               FloatingPoint first_weight,
                               const Color& second_color,
                               FloatingPoint second_weight) {
+    Color new_color;
+#if EIGEN_HAS_SIMD_UNARY_OPS
+    // Bad hack to avoid refactoring voxblox.
+    Eigen::Map<const Eigen::Matrix<uint8_t, 4 , 1>> eigen_color_first(reinterpret_cast<const uint8_t*>(&first_color));
+    Eigen::Map<const Eigen::Matrix<uint8_t, 4 , 1>> eigen_color_second(reinterpret_cast<const uint8_t*>(&second_color));
+
+    Eigen::Map<Eigen::Matrix<uint8_t, 4 , 1>> eigen_new_color(reinterpret_cast<uint8_t*>(&new_color));
+    eigen_new_color = (first_weight * eigen_color_first.cast<FloatingPoint>() +
+    		second_weight * eigen_color_second.cast<FloatingPoint>()).array().round().cast<uint8_t>().matrix();
+#else
     FloatingPoint total_weight = first_weight + second_weight;
 
     first_weight /= total_weight;
     second_weight /= total_weight;
 
-    Color new_color;
     new_color.r = static_cast<uint8_t>(
         round(first_color.r * first_weight + second_color.r * second_weight));
     new_color.g = static_cast<uint8_t>(
@@ -90,7 +101,7 @@ struct Color {
         round(first_color.b * first_weight + second_color.b * second_weight));
     new_color.a = static_cast<uint8_t>(
         round(first_color.a * first_weight + second_color.a * second_weight));
-
+#endif
     return new_color;
   }
 
@@ -114,70 +125,79 @@ struct Color {
 // function doesn't always compute the correct grid index for coordinates
 // near the grid cell boundaries.
 inline AnyIndex getGridIndexFromPoint(const Point& point,
-                                      const FloatingPoint grid_size_inv) {
+                                      const FloatingPoint& grid_size_inv) {
+#if EIGEN_HAS_SIMD_UNARY_OPS
+  return (point.array() * grid_size_inv).floor().cast<IndexElement>();
+#else
   return AnyIndex(std::floor(point.x() * grid_size_inv),
-                  std::floor(point.y() * grid_size_inv),
-                  std::floor(point.z() * grid_size_inv));
+		  	  	  std::floor(point.y() * grid_size_inv),
+				  std::floor(point.z() * grid_size_inv));
+#endif
 }
 
 // IMPORTANT NOTE: Due the limited accuracy of the FloatingPoint type, this
 // function doesn't always compute the correct grid index for coordinates
 // near the grid cell boundaries.
 inline AnyIndex getGridIndexFromPoint(const Point& scaled_point) {
-  return AnyIndex(std::floor(scaled_point.x()), std::floor(scaled_point.y()),
-                  std::floor(scaled_point.z()));
+  #if EIGEN_HAS_SIMD_UNARY_OPS
+    return (scaled_point.array().floor()).cast<IndexElement>();
+  #else
+	return AnyIndex(std::floor(scaled_point.x()), std::floor(scaled_point.y()),
+	                std::floor(scaled_point.z()));
+  #endif
 }
 
 inline AnyIndex getGridIndexFromOriginPoint(const Point& point,
-                                            const FloatingPoint grid_size_inv) {
+                                            const FloatingPoint& grid_size_inv) {
+#if EIGEN_HAS_SIMD_UNARY_OPS
+  return (point.array() * grid_size_inv).round().cast<IndexElement>();
+#else
   return AnyIndex(std::round(point.x() * grid_size_inv),
                   std::round(point.y() * grid_size_inv),
                   std::round(point.z() * grid_size_inv));
+#endif
 }
 
 inline Point getCenterPointFromGridIndex(const AnyIndex& idx,
-                                         FloatingPoint grid_size) {
-  return Point((static_cast<FloatingPoint>(idx.x()) + 0.5) * grid_size,
-               (static_cast<FloatingPoint>(idx.y()) + 0.5) * grid_size,
-               (static_cast<FloatingPoint>(idx.z()) + 0.5) * grid_size);
+                                         const FloatingPoint& grid_size) {
+  return (Point::Constant(0.5) + idx.cast<FloatingPoint>()) * grid_size;
 }
 
 inline Point getOriginPointFromGridIndex(const AnyIndex& idx,
-                                         FloatingPoint grid_size) {
-  return Point(static_cast<FloatingPoint>(idx.x()) * grid_size,
-               static_cast<FloatingPoint>(idx.y()) * grid_size,
-               static_cast<FloatingPoint>(idx.z()) * grid_size);
+                                         const FloatingPoint& grid_size) {
+  return idx.cast<FloatingPoint>() * grid_size;
 }
 
 inline BlockIndex getBlockIndexFromGlobalVoxelIndex(
-    const AnyIndex& global_voxel_idx, FloatingPoint voxels_per_side_inv_) {
+    const AnyIndex& global_voxel_idx, const FloatingPoint& voxels_per_side_inv) {
+#if EIGEN_HAS_SIMD_UNARY_OPS
+  return (global_voxel_idx.cast<FloatingPoint>().array() * voxels_per_side_inv).floor().cast<IndexElement>();
+#else
   return BlockIndex(
-      std::floor(static_cast<FloatingPoint>(global_voxel_idx.x()) *
-                 voxels_per_side_inv_),
-      std::floor(static_cast<FloatingPoint>(global_voxel_idx.y()) *
-                 voxels_per_side_inv_),
-      std::floor(static_cast<FloatingPoint>(global_voxel_idx.z()) *
-                 voxels_per_side_inv_));
+    std::floor(static_cast<FloatingPoint>(global_voxel_idx.x()) *
+    		   voxels_per_side_inv),
+    std::floor(static_cast<FloatingPoint>(global_voxel_idx.y()) *
+               voxels_per_side_inv),
+    std::floor(static_cast<FloatingPoint>(global_voxel_idx.z()) *
+               voxels_per_side_inv));
+#endif
 }
 
 inline VoxelIndex getLocalFromGlobalVoxelIndex(const AnyIndex& global_voxel_idx,
                                                int voxels_per_side) {
-  VoxelIndex local_voxel_idx(global_voxel_idx.x() % voxels_per_side,
-                             global_voxel_idx.y() % voxels_per_side,
-                             global_voxel_idx.z() % voxels_per_side);
-
-  // Make sure we're within bounds.
-  for (unsigned int i = 0u; i < 3u; ++i) {
-    if (local_voxel_idx(i) < 0) {
-      local_voxel_idx(i) += voxels_per_side;
-    }
-  }
-
+  VoxelIndex local_voxel_idx = global_voxel_idx.unaryExpr(
+		  [voxels_per_side](const IndexElement global_index) {
+	IndexElement local_index = global_index % voxels_per_side;
+	if (local_index < 0) {
+		local_index += global_index;
+	}
+	return local_index;
+  });
   return local_voxel_idx;
 }
 
 // Math functions.
-inline int signum(FloatingPoint x) { return (x == 0) ? 0 : x < 0 ? -1 : 1; }
+inline int signum(const FloatingPoint& x) { return (x == 0) ? 0 : x < 0 ? -1 : 1; }
 
 // For occupancy/octomap-style mapping.
 inline float logOddsFromProbability(float probability) {
@@ -197,4 +217,4 @@ inline std::shared_ptr<Type> aligned_shared(Arguments&&... arguments) {
 }
 }  // namespace voxblox
 
-#endif  // VOXBLOX_FAST_CORE_COMMON_H_
+#endif  // VOXBLOX_CORE_COMMON_H_
