@@ -14,6 +14,10 @@
 
 #include "htwfsc_benchmarks/simulation/sphere_simulator.h"
 
+#ifdef COUNTFLOPS
+extern flopcounter countflops;
+#endif
+
 class CastRayBenchmark : public ::benchmark::Fixture {
  public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
@@ -46,6 +50,17 @@ BENCHMARK_DEFINE_F(CastRayBenchmark, BM_baseline_radius)
   const double radius = static_cast<double>(state.range(0)) / 2.0;
   state.counters["radius_cm"] = radius * 100;
   CreateSphere(radius, kNumPoints);
+#ifdef COUNTFLOPS
+  {
+      countflops.ResetCastRay();
+      const voxblox::Point& origin = T_G_C_.getPosition();
+      voxblox::IndexVector indices;
+      for (const voxblox::Point& point : sphere_points_G_) {
+        voxblox::castRay(origin, point, &indices);
+      }
+      state.counters["castray-flops"] = countflops.castray_adds+countflops.castray_divs;
+  }
+#endif
   while (state.KeepRunning()) {
     const voxblox::Point& origin = T_G_C_.getPosition();
     voxblox::IndexVector indices;
@@ -61,6 +76,17 @@ BENCHMARK_DEFINE_F(CastRayBenchmark, BM_fast_radius)(benchmark::State& state) {
   const double radius = static_cast<double>(state.range(0)) / 2.0;
   state.counters["radius_cm"] = radius * 100;
   CreateSphere(radius, kNumPoints);
+#ifdef COUNTFLOPS
+  {
+      countflops.ResetCastRay();
+      const voxblox::Point& origin = T_G_C_.getPosition();
+      voxblox::IndexVector indices;
+      for (const voxblox::Point& point : sphere_points_G_) {
+        voxblox::castRay(origin, point, &indices);
+      }
+      state.counters["castray-flops"] = countflops.castray_adds+countflops.castray_divs;
+  }
+#endif
   while (state.KeepRunning()) {
     const voxblox::Point& origin = T_G_C_.getPosition();
     voxblox::IndexVector indices;
@@ -80,6 +106,17 @@ BENCHMARK_DEFINE_F(CastRayBenchmark, BM_baseline_num_points)
   const size_t num_points = static_cast<size_t>(state.range(0));
   CreateSphere(kRadius, num_points);
   state.counters["num_points"] = sphere_points_G_.size();
+#ifdef COUNTFLOPS
+  {
+      countflops.ResetCastRay();
+      const voxblox::Point& origin = T_G_C_.getPosition();
+      voxblox::IndexVector indices;
+      for (const voxblox::Point& point : sphere_points_G_) {
+        voxblox::castRay(origin, point, &indices);
+      }
+      state.counters["castray-flops"] = countflops.castray_adds+countflops.castray_divs;
+  }
+#endif
   while (state.KeepRunning()) {
     const voxblox::Point& origin = T_G_C_.getPosition();
     voxblox::IndexVector indices;
@@ -96,6 +133,17 @@ BENCHMARK_DEFINE_F(CastRayBenchmark, BM_fast)(benchmark::State& state) {
   const size_t num_points = static_cast<size_t>(state.range(0));
   CreateSphere(kRadius, num_points);
   state.counters["num_points"] = sphere_points_G_.size();
+#ifdef COUNTFLOPS
+  {
+      countflops.ResetCastRay();
+      const voxblox::Point& origin = T_G_C_.getPosition();
+      voxblox::IndexVector indices;
+      for (const voxblox::Point& point : sphere_points_G_) {
+        voxblox::castRay(origin, point, &indices);
+      }
+      state.counters["castray-flops"] = countflops.castray_adds+countflops.castray_divs;
+  }
+#endif
   while (state.KeepRunning()) {
     const voxblox_fast::Point& origin = T_G_C_.getPosition();
     voxblox_fast::IndexVector indices;

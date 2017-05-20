@@ -11,6 +11,10 @@
 
 #include "htwfsc_benchmarks/simulation/sphere_simulator.h"
 
+#ifdef COUNTFLOPS
+extern flopcounter countflops;
+#endif
+
 class E2EBenchmark : public ::benchmark::Fixture {
  public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
@@ -79,6 +83,13 @@ BENCHMARK_DEFINE_F(E2EBenchmark, BM_baseline_radius)(benchmark::State& state) {
   const double radius = static_cast<double>(state.range(0)) / 2.0;
   state.counters["radius_cm"] = radius * 100;
   CreateSphere(radius, kNumPoints);
+#ifdef COUNTFLOPS
+  countflops.ResetCastRay();
+  countflops.ResetUpdateTsdf();
+  baseline_integrator_->integratePointCloud(T_G_C, sphere_points_C, colors_);
+  state.counters["castray-flops"] = countflops.castray_adds+countflops.castray_divs;
+  state.counters["updatetsdf-flops"] = countflops.updatetsdf_adds+countflops.updatetsdf_muls+countflops.updatetsdf_divs+countflops.updatetsdf_sqrts;
+#endif
   while (state.KeepRunning()) {
     baseline_integrator_->integratePointCloud(T_G_C, sphere_points_C, colors_);
   }
@@ -89,6 +100,13 @@ BENCHMARK_DEFINE_F(E2EBenchmark, BM_fast_radius)(benchmark::State& state) {
   const double radius = static_cast<double>(state.range(0)) / 2.0;
   state.counters["radius_cm"] = radius * 100;
   CreateSphere(radius, kNumPoints);
+#ifdef COUNTFLOPS
+  countflops.ResetCastRay();
+  countflops.ResetUpdateTsdf();
+  baseline_integrator_->integratePointCloud(T_G_C, sphere_points_C, colors_);
+  state.counters["castray-flops"] = countflops.castray_adds+countflops.castray_divs;
+  state.counters["updatetsdf-flops"] = countflops.updatetsdf_adds+countflops.updatetsdf_muls+countflops.updatetsdf_divs+countflops.updatetsdf_sqrts;
+#endif
   while (state.KeepRunning()) {
     fast_integrator_->integratePointCloud(T_G_C, sphere_points_C, fast_colors_);
   }
@@ -104,6 +122,13 @@ BENCHMARK_DEFINE_F(E2EBenchmark, BM_baseline_num_points)
   const size_t num_points = static_cast<double>(state.range(0));
   CreateSphere(kRadius, num_points);
   state.counters["num_points"] = sphere_points_C.size();
+#ifdef COUNTFLOPS
+  countflops.ResetCastRay();
+  countflops.ResetUpdateTsdf();
+  baseline_integrator_->integratePointCloud(T_G_C, sphere_points_C, colors_);
+  state.counters["castray-flops"] = countflops.castray_adds+countflops.castray_divs;
+  state.counters["updatetsdf-flops"] = countflops.updatetsdf_adds+countflops.updatetsdf_muls+countflops.updatetsdf_divs+countflops.updatetsdf_sqrts;
+#endif
   while (state.KeepRunning()) {
     baseline_integrator_->integratePointCloud(T_G_C, sphere_points_C, colors_);
   }
@@ -116,6 +141,13 @@ BENCHMARK_DEFINE_F(E2EBenchmark, BM_fast_num_points)(benchmark::State& state) {
   const size_t num_points = static_cast<double>(state.range(0));
   CreateSphere(kRadius, num_points);
   state.counters["num_points"] = sphere_points_C.size();
+#ifdef COUNTFLOPS
+  countflops.ResetCastRay();
+  countflops.ResetUpdateTsdf();
+  baseline_integrator_->integratePointCloud(T_G_C, sphere_points_C, colors_);
+  state.counters["castray-flops"] = countflops.castray_adds+countflops.castray_divs;
+  state.counters["updatetsdf-flops"] = countflops.updatetsdf_adds+countflops.updatetsdf_muls+countflops.updatetsdf_divs+countflops.updatetsdf_sqrts;
+#endif
   while (state.KeepRunning()) {
     fast_integrator_->integratePointCloud(T_G_C, sphere_points_C, fast_colors_);
   }
