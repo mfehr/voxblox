@@ -147,7 +147,6 @@ class TsdfIntegrator {
     for (size_t pt_idx = 0u; pt_idx < num_points; ++pt_idx) {
       const Point& point_C = points_C[pt_idx];
       const Point point_G = T_G_C * point_C;
-      const Color& color = colors[pt_idx];
       PointQuadruple& start_end_points = start_end_point_vector[pt_idx];
 
       FloatingPoint ray_distance = (point_G - origin).norm();
@@ -164,13 +163,10 @@ class TsdfIntegrator {
                                   ? origin
                                   : (point_G - unit_ray * truncation_distance);
 
-      const Point start_scaled = ray_start * voxel_size_inv_;
-      const Point end_scaled = ray_end * voxel_size_inv_;
-
       start_end_points.col(0) = point_G;
       start_end_points.col(1) = point_C;
-      start_end_points.col(2) = start_scaled;
-      start_end_points.col(3) = end_scaled;
+      start_end_points.col(2) = ray_start * voxel_size_inv_;
+      start_end_points.col(3) = ray_end * voxel_size_inv_;
 
       const Point start_scaled_block = ray_start * block_size_inv_;
       const Point end_scaled_block = ray_end * block_size_inv_;
@@ -182,6 +178,9 @@ class TsdfIntegrator {
         rays_per_block[block_idx].push_back(pt_idx);
       }
     }
+    //
+    // std::cout << num_points << " rays traversed " << rays_per_block.size()
+    //           << " blocks in total." << std::endl;
 
     for (const std::pair<BlockIndex, std::vector<size_t>>& block_rays :
          rays_per_block) {
@@ -190,7 +189,7 @@ class TsdfIntegrator {
 
       AnyIndex min_idx = block_idx.array() * voxels_per_side_;
       AnyIndex max_idx = min_idx.array() + voxels_per_side_minus_one;
-
+      //
       // std::cout << "Block " << block_idx.transpose() << " is traversed by "
       //           << block_rays.second.size() << " rays." << std::endl;
 

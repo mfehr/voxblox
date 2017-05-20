@@ -18,7 +18,9 @@ class CastRayBenchmark : public ::benchmark::Fixture {
  public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
  protected:
-  void SetUp(const ::benchmark::State& st) { T_G_C_ = voxblox::Transformation(); }
+  void SetUp(const ::benchmark::State& st) {
+    T_G_C_ = voxblox::Transformation();
+  }
 
   void CreateSphere(const double radius, const size_t num_points) {
     sphere_points_G_.clear();
@@ -90,9 +92,10 @@ BENCHMARK_DEFINE_F(CastRayBenchmark, BM_baseline_num_points)
 }
 BENCHMARK_REGISTER_F(CastRayBenchmark, BM_baseline_num_points)
     ->RangeMultiplier(2)
-    ->Range(1, 1e5);
+    ->Range(1, 2e4);
 
-BENCHMARK_DEFINE_F(CastRayBenchmark, BM_fast)(benchmark::State& state) {
+BENCHMARK_DEFINE_F(CastRayBenchmark, BM_fast_num_points)
+(benchmark::State& state) {
   const size_t num_points = static_cast<size_t>(state.range(0));
   CreateSphere(kRadius, num_points);
   state.counters["num_points"] = sphere_points_G_.size();
@@ -104,8 +107,8 @@ BENCHMARK_DEFINE_F(CastRayBenchmark, BM_fast)(benchmark::State& state) {
     }
   }
 }
-BENCHMARK_REGISTER_F(CastRayBenchmark, BM_fast)
+BENCHMARK_REGISTER_F(CastRayBenchmark, BM_fast_num_points)
     ->RangeMultiplier(2)
-    ->Range(1, 1e5);
+    ->Range(1, 2e4);
 
 BENCHMARKING_ENTRY_POINT

@@ -32,8 +32,10 @@ class LayerTest {
       voxblox_fast::BlockIndexList::const_iterator it =
           std::find(blocks_B.begin(), blocks_B.end(), index_A);
       if (it != blocks_B.end()) {
-        const voxblox::Block<VoxelType>& block_A = layer_A.getBlockByIndex(index_A);
-        const voxblox_fast::Block<VoxelTypeB>& block_B = layer_B.getBlockByIndex(*it);
+        const voxblox::Block<VoxelType>& block_A =
+            layer_A.getBlockByIndex(index_A);
+        const voxblox_fast::Block<VoxelTypeB>& block_B =
+            layer_B.getBlockByIndex(*it);
         CompareBlocks(block_A, block_B);
       } else {
         ADD_FAILURE();
@@ -45,8 +47,10 @@ class LayerTest {
       voxblox::BlockIndexList::const_iterator it =
           std::find(blocks_A.begin(), blocks_A.end(), index_B);
       if (it != blocks_A.end()) {
-        const voxblox::Block<VoxelType>& block_B = layer_A.getBlockByIndex(index_B);
-        const voxblox_fast::Block<VoxelTypeB>& block_A = layer_B.getBlockByIndex(*it);
+        const voxblox::Block<VoxelType>& block_B =
+            layer_A.getBlockByIndex(index_B);
+        const voxblox_fast::Block<VoxelTypeB>& block_A =
+            layer_B.getBlockByIndex(*it);
         CompareBlocks(block_B, block_A);
       } else {
         ADD_FAILURE();
@@ -81,14 +85,19 @@ class LayerTest {
 };
 
 template <>
-void LayerTest<voxblox::TsdfVoxel, voxblox_fast::TsdfVoxel>::CompareVoxel(const voxblox::TsdfVoxel& voxel_A,
-                                        const voxblox_fast::TsdfVoxel& voxel_B) const {
-  CHECK_NEAR(voxel_A.distance, voxel_B.distance, kTolerance);
-  CHECK_NEAR(voxel_A.weight, voxel_B.weight, kTolerance);
-  CHECK_EQ(voxel_A.color.r, voxel_B.color.r);
-  CHECK_EQ(voxel_A.color.g, voxel_B.color.g);
-  CHECK_EQ(voxel_A.color.b, voxel_B.color.b);
-  CHECK_EQ(voxel_A.color.a, voxel_B.color.a);
+void LayerTest<voxblox::TsdfVoxel, voxblox_fast::TsdfVoxel>::CompareVoxel(
+    const voxblox::TsdfVoxel& voxel_A,
+    const voxblox_fast::TsdfVoxel& voxel_B) const {
+  EXPECT_NEAR(voxel_A.distance, voxel_B.distance, kTolerance);
+  EXPECT_NEAR(voxel_A.weight, voxel_B.weight, kTolerance);
+  EXPECT_EQ(static_cast<int>(voxel_A.color.r),
+            static_cast<int>(voxel_B.color.r));
+  EXPECT_EQ(static_cast<int>(voxel_A.color.g),
+            static_cast<int>(voxel_B.color.g));
+  EXPECT_EQ(static_cast<int>(voxel_A.color.b),
+            static_cast<int>(voxel_B.color.b));
+  EXPECT_EQ(static_cast<int>(voxel_A.color.a),
+            static_cast<int>(voxel_B.color.a));
 }
 
 }  // namespace test

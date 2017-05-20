@@ -79,12 +79,12 @@ class LayerTest {
 template <>
 void LayerTest<TsdfVoxel>::CompareVoxel(const TsdfVoxel& voxel_A,
                                         const TsdfVoxel& voxel_B) const {
-  CHECK_NEAR(voxel_A.distance, voxel_B.distance, kTolerance);
-  CHECK_NEAR(voxel_A.weight, voxel_B.weight, kTolerance);
-  CHECK_EQ(voxel_A.color.r, voxel_B.color.r);
-  CHECK_EQ(voxel_A.color.g, voxel_B.color.g);
-  CHECK_EQ(voxel_A.color.b, voxel_B.color.b);
-  CHECK_EQ(voxel_A.color.a, voxel_B.color.a);
+  EXPECT_NEAR(voxel_A.distance, voxel_B.distance, kTolerance);
+  EXPECT_NEAR(voxel_A.weight, voxel_B.weight, kTolerance);
+  EXPECT_EQ(voxel_A.color.r, voxel_B.color.r);
+  EXPECT_EQ(voxel_A.color.g, voxel_B.color.g);
+  EXPECT_EQ(voxel_A.color.b, voxel_B.color.b);
+  EXPECT_EQ(voxel_A.color.a, voxel_B.color.a);
 }
 
 }  // namespace test

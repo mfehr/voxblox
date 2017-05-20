@@ -11,7 +11,6 @@
 #include "voxblox_fast/utils/timing.h"
 
 namespace voxblox_fast {
-
 // This function returns a list of local voxel indices within a volume of voxels
 // defined by min_index and max_index.
 inline void castRayInVolume(
@@ -58,11 +57,14 @@ inline void castRayInVolume(
   const Ray t_step_size =
       ray_step_signs.cast<FloatingPoint>().cwiseQuotient(ray_scaled);
 
+  bool entered_volume = false;
+
   AnyIndex curr_index = start_index;
   if (curr_index.x() >= min_index.x() && curr_index.x() < max_index.x() &&
       curr_index.y() >= min_index.y() && curr_index.y() < max_index.y() &&
       curr_index.z() >= min_index.z() && curr_index.z() < max_index.z()) {
     indices->push_back(curr_index - min_index);
+    entered_volume = true;
   }
 
   while (curr_index != end_index) {
@@ -74,10 +76,15 @@ inline void castRayInVolume(
     curr_index[t_min_idx] += ray_step_signs[t_min_idx];
     t_to_next_boundary[t_min_idx] += t_step_size[t_min_idx];
 
-    if (curr_index.x() >= min_index.x() && curr_index.x() < max_index.x() &&
-        curr_index.y() >= min_index.y() && curr_index.y() < max_index.y() &&
-        curr_index.z() >= min_index.z() && curr_index.z() < max_index.z()) {
+    if (curr_index.x() >= min_index.x() && curr_index.x() <= max_index.x() &&
+        curr_index.y() >= min_index.y() && curr_index.y() <= max_index.y() &&
+        curr_index.z() >= min_index.z() && curr_index.z() <= max_index.z()) {
       indices->push_back(curr_index - min_index);
+      entered_volume = true;
+    } else {
+      if (entered_volume) {
+        return;
+      }
     }
   }
 }
@@ -95,6 +102,7 @@ inline void castRay(
   const AnyIndex start_index = getGridIndexFromPoint(start_scaled);
   const AnyIndex end_index = getGridIndexFromPoint(end_scaled);
   if (start_index == end_index) {
+    indices->push_back(start_index);
     return;
   }
 
