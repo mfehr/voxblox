@@ -95,17 +95,17 @@ struct Color {
     __m128i c2v = _mm_setr_epi32(second_color.rgba[0], second_color.rgba[1],
                                 second_color.rgba[2], second_color.rgba[3]);
 
-    __m256d c1dv = _mm256_cvtepi32_pd(c1v);
-    __m256d c2dv = _mm256_cvtepi32_pd(c2v);
+    __m128d c1fv = _mm_cvtepi32_ps(c1v);
+    __m128d c2fv = _mm_cvtepi32_ps(c2v);
 
-    __m256d weight_1 = _mm256_set1_pd(first_weight);
-    __m256d color_1 = _mm256_mul_pd(c1dv, weight_1);
+    __m128d weight_1 = _mm_set1_ps(first_weight);
+    __m128d color_1 = _mm_mul_pd(c1fv, weight_1);
 
-    __m256d weight_2 = _mm256_set1_pd(second_weight);
-    __m256d color_2 = _mm256_mul_pd(c2dv, weight_2);
+    __m128d weight_2 = _mm_set1_ps(second_weight);
+    __m128d color_2 = _mm_mul_pd(c2fv, weight_2);
 
-    __m256d color_new_vec = _mm256_add_pd(color_1, color_2);
-    __m128i color_new_int = _mm256_cvttpd_epi32(color_new_vec);
+    __m128d color_new_vec = _mm_add_ps(color_1, color_2);
+    __m128i color_new_int = _mm_cvttps_epi32(color_new_vec);
 
     /*int a[4];
     _mm_maskstore_epi32(a, mask, color_new_int);*/
