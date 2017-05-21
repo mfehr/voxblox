@@ -149,13 +149,10 @@ inline void castRayInVolume(
     curr_index[t_min_idx] += ray_step_signs[t_min_idx];
     t_to_next_boundary[t_min_idx] += t_step_size[t_min_idx];
 
-    // TODO(mfehr): USE THIS!
-    // if (curr_index[t_min_idx] >= min_index[t_min_idx] &&
-    // curr_index[t_min_idx] <= max_index[t_min_idx])
-
-    if (curr_index.x() >= min_index.x() && curr_index.x() <= max_index.x() &&
-        curr_index.y() >= min_index.y() && curr_index.y() <= max_index.y() &&
-        curr_index.z() >= min_index.z() && curr_index.z() <= max_index.z()) {
+    // We only need to check if we entered the volume based on one dimension,
+    // since we always step in only one direction per iteration.
+    if (curr_index[t_min_idx] >= min_index[t_min_idx] &&
+        curr_index[t_min_idx] <= max_index[t_min_idx]) {
       indices->push_back(curr_index - min_index);
       entered_volume = true;
     } else {
