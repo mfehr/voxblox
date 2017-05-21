@@ -31,7 +31,7 @@ typedef AnyIndex BlockIndex;
 
 typedef std::pair<BlockIndex, VoxelIndex> VoxelKey;
 
-typedef std::vector<AnyIndex, Eigen::aligned_allocator<AnyIndex> > IndexVector;
+typedef std::vector<AnyIndex, Eigen::aligned_allocator<AnyIndex>> IndexVector;
 typedef IndexVector BlockIndexList;
 typedef IndexVector VoxelIndexList;
 
@@ -47,7 +47,7 @@ typedef std::vector<Label> Labels;
 typedef size_t VertexIndex;
 typedef std::vector<VertexIndex> VertexIndexList;
 typedef Eigen::Matrix<FloatingPoint, 3, 3> Triangle;
-typedef std::vector<Triangle, Eigen::aligned_allocator<Triangle> >
+typedef std::vector<Triangle, Eigen::aligned_allocator<Triangle>>
     TriangleVector;
 
 // Transformation type for defining sensor orientation.
@@ -181,7 +181,8 @@ inline VoxelIndex getLocalFromGlobalVoxelIndex(const AnyIndex& global_voxel_idx,
 }
 
 // Math functions.
-inline int signum(FloatingPoint x) { return (x == 0) ? 0 : x < 0 ? -1 : 1; }
+inline int signum(FloatingPoint x) { return (x < 0) ? -1 : 1; }
+inline int isneg(FloatingPoint x) { return x < 0.0; }
 
 // For occupancy/octomap-style mapping.
 inline float logOddsFromProbability(float probability) {

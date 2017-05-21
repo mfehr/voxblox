@@ -173,14 +173,12 @@ class TsdfIntegrator {
 
       IndexVector block_indices;
       castRay(start_scaled_block, end_scaled_block, &block_indices);
+      CHECK_GT(block_indices.size(), 0u);
 
       for (const BlockIndex& block_idx : block_indices) {
         rays_per_block[block_idx].push_back(pt_idx);
       }
     }
-    //
-    // std::cout << num_points << " rays traversed " << rays_per_block.size()
-    //           << " blocks in total." << std::endl;
 
     for (const std::pair<BlockIndex, std::vector<size_t>>& block_rays :
          rays_per_block) {
@@ -189,12 +187,6 @@ class TsdfIntegrator {
 
       AnyIndex min_idx = block_idx.array() * voxels_per_side_;
       AnyIndex max_idx = min_idx.array() + voxels_per_side_minus_one;
-      //
-      // std::cout << "Block " << block_idx.transpose() << " is traversed by "
-      //           << block_rays.second.size() << " rays." << std::endl;
-
-      // std::cout << "min_idx: " << min_idx.transpose() << std::endl;
-      // std::cout << "max_idx: " << max_idx.transpose() << std::endl;
 
       for (const size_t pt_idx : block_rays.second) {
         const PointQuadruple& start_end_points = start_end_point_vector[pt_idx];
@@ -209,12 +201,10 @@ class TsdfIntegrator {
         IndexVector local_voxel_indices;
         castRayInVolume(start_scaled, end_scaled, min_idx, max_idx,
                         &local_voxel_indices);
+        CHECK_GT(local_voxel_indices.size(), 0u);
 
         timing::Timer update_voxels_timer("integrate/update_voxels");
         for (const AnyIndex& local_voxel_idx : local_voxel_indices) {
-          // std::cout << "Local voxel idx: " << local_voxel_idx.transpose()
-          //           << std::endl;
-
           const Point voxel_center_G =
               block->computeCoordinatesFromVoxelIndex(local_voxel_idx);
           TsdfVoxel& tsdf_voxel = block->getVoxelByVoxelIndex(local_voxel_idx);

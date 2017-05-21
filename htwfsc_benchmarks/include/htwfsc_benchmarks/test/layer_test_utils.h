@@ -27,15 +27,17 @@ class LayerTest {
     voxblox_fast::BlockIndexList blocks_B;
     layer_A.getAllAllocatedBlocks(&blocks_A);
     layer_B.getAllAllocatedBlocks(&blocks_B);
-    EXPECT_EQ(blocks_A.size(), blocks_B.size());
+    ASSERT_EQ(blocks_A.size(), blocks_B.size());
     for (const voxblox::BlockIndex& index_A : blocks_A) {
       voxblox_fast::BlockIndexList::const_iterator it =
           std::find(blocks_B.begin(), blocks_B.end(), index_A);
       if (it != blocks_B.end()) {
+        CHECK_EQ(*it, index_A);
         const voxblox::Block<VoxelType>& block_A =
             layer_A.getBlockByIndex(index_A);
         const voxblox_fast::Block<VoxelTypeB>& block_B =
             layer_B.getBlockByIndex(*it);
+
         CompareBlocks(block_A, block_B);
       } else {
         ADD_FAILURE();
@@ -47,11 +49,12 @@ class LayerTest {
       voxblox::BlockIndexList::const_iterator it =
           std::find(blocks_A.begin(), blocks_A.end(), index_B);
       if (it != blocks_A.end()) {
-        const voxblox::Block<VoxelType>& block_B =
-            layer_A.getBlockByIndex(index_B);
-        const voxblox_fast::Block<VoxelTypeB>& block_A =
-            layer_B.getBlockByIndex(*it);
-        CompareBlocks(block_B, block_A);
+        CHECK_EQ(*it, index_B);
+        const voxblox_fast::Block<VoxelTypeB>& block_B =
+            layer_B.getBlockByIndex(index_B);
+        const voxblox::Block<VoxelType>& block_A = layer_A.getBlockByIndex(*it);
+
+        CompareBlocks(block_A, block_B);
       } else {
         ADD_FAILURE();
         LOG(ERROR) << "Block at index [" << index_B.transpose()
