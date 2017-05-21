@@ -1,9 +1,9 @@
 #ifndef SPHERESIMULATOR_H_
 #define SPHERESIMULATOR_H_
 
-#include "voxblox/core/common.h"
+#include "voxblox_fast/core/common.h"
 
-namespace voxblox {
+namespace voxblox_fast {
 namespace sphere_sim {
 
 void createSphere(const double mean, const double variance,

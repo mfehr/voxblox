@@ -1,6 +1,6 @@
-#include "voxblox/simulation/simulation_world.h"
+#include "voxblox_fast/simulation/simulation_world.h"
 
-namespace voxblox {
+namespace voxblox_fast {
 
 SimulationWorld::SimulationWorld()
     : min_bound_(-5.0, -5.0, -1.0), max_bound_(5.0, 5.0, 9.0) {}

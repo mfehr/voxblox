@@ -1,4 +1,4 @@
-#include "voxblox/simulation/sphere_simulator.h"
+#include "voxblox_fast/simulation/sphere_simulator.h"
 
 #include <cmath>
 #include <memory>
@@ -11,7 +11,7 @@
 
 #include <glog/logging.h>
 
-namespace voxblox {
+namespace voxblox_fast {
 namespace sphere_sim {
 
 void createSphere(const double mean, const double variance,
