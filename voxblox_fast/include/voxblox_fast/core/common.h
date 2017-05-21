@@ -189,7 +189,7 @@ inline VoxelIndex getLocalFromGlobalVoxelIndex(const AnyIndex& global_voxel_idx,
 		  [voxels_per_side](const IndexElement global_index) {
 	IndexElement local_index = global_index % voxels_per_side;
 	if (local_index < 0) {
-		local_index += global_index;
+		local_index += voxels_per_side;
 	}
 	return local_index;
   });
