@@ -8,7 +8,7 @@
 #include <thread>
 #include <utility>
 
-#include <immintrin.h>
+#include <xmmintrin.h>
 
 #include <Eigen/Core>
 #include <glog/logging.h>
@@ -87,17 +87,16 @@ class TsdfIntegrator {
     return 0.0;
   }
 
-  inline void dotProduct(const __m256& x, const __m256& y, double* val) {
-    __m256d xy = _mm256_mul_pd(x, y);
-    __m256d hadd_xy = _mm256_hadd_pd(xy, xy);
-    __m128d hadd_xy_hi128 = _mm256_extractf128_pd(hadd_xy, 1);
-    __m128d dotproduct = _mm_add_pd(_mm256_castpd256_pd128(hadd_xy), hadd_xy_hi128);
+  inline void dotProduct(const __m128 x, const __m128 y, float* val) {
+    __m128 xy = _mm_mul_ps(x, y);
+    __m128 hadd_xy = _mm_hadd_ps(xy, xy);
+    __m128 dotproduct = _mm_hadd_ps(hadd_xy, hadd_xy);
 
-    _mm_store_sd(val, dotproduct);
+    _mm_store_ss(val, dotproduct);
   }
 
-  inline void updateTsdfVoxel(const __m256& origin,
-                              const __m256& point_G, const __m256& voxel_center,
+  inline void updateTsdfVoxel(const __m128 origin,
+                              const __m128 point_G, const __m128 voxel_center,
                               const Color& color,
                               const float truncation_distance,
                               const float weight, TsdfVoxel* tsdf_voxel) {
@@ -105,19 +104,19 @@ class TsdfIntegrator {
     // To do this, project the voxel_center onto the ray from origin to point G.
     // Then check if the the magnitude of the vector is smaller or greater than
     // the original distance...
-    __m256 v_voxel_origin = _mm256_sub_pd(voxel_center, origin);
-    __m256 v_point_origin = _mm256_sub_pd(point_G, origin);
+    __m128 v_voxel_origin = _mm_sub_ps(voxel_center, origin);
+    __m128 v_point_origin = _mm_sub_ps(point_G, origin);
 
-    double norm_sq;
+    float norm_sq;
     dotProduct(v_point_origin, v_point_origin, &norm_sq);
-    FloatingPoint dist_G = sqrt(norm_sq);
+    const FloatingPoint dist_G = sqrt(norm_sq);
 
     // projection of a (v_voxel_origin) onto b (v_point_origin)
-    double dot;
+    float dot;
     dotProduct(v_voxel_origin, v_point_origin, &dot);
     FloatingPoint dist_G_V = dot / dist_G;
 
-    float sdf = static_cast<float>(dist_G - dist_G_V);
+    float sdf = dist_G - dist_G_V;
 
     float updated_weight = weight;
     // Compute updated weight in case we use weight dropoff. It's easier here
@@ -156,23 +155,15 @@ class TsdfIntegrator {
     return sdf;
   }
 
-  typedef union { __m128 v; double a[2]; } uf2;
-  void printVec2(__m128 v, char const * name) {
-    uf2 u;
-    u.v = v;
-    printf("Vector %s: [ %f\t%f\t ]\n", name, u.a[0], u.a[1]);
-  }
-
-  typedef union { __m256 v; double a[4]; } uf;
-  void printVec4(__m256 v, char const * name) {
+  typedef union { __m128 v; float a[4]; } uf;
+  void printVec4(__m128 v, char const * name) {
     uf u;
     u.v = v;
     printf("Vector %s: [ %f\t%f\t%f\t%f ]\n", name, u.a[0], u.a[1], u.a[2], u.a[3]);
   }
 
-  inline __m256 loadPointToAvx(const Point& value) {
-    __m256 mask = _mm256_set_epi64x(0, -1,-1,-1);
-    return _mm256_maskload_pd(value.data(), mask);
+  inline __m128 loadPointToSse(const Point& value) {
+    return _mm_load_ps(value.data());
   }
 
   void integratePointCloud(const Transformation& T_G_C,
@@ -212,16 +203,15 @@ class TsdfIntegrator {
       castRay(start_scaled, end_scaled, &global_voxel_indices);
       cast_ray_timer.Stop();
 
-      const float weight =
-          getVoxelWeight(point_C);
+      const float weight = getVoxelWeight(point_C);
 
       timing::Timer update_voxels_timer("integrate/update_voxels");
 
       BlockIndex last_block_idx = BlockIndex::Zero();
       Block<TsdfVoxel>::Ptr block;
 
-      __m256 origin_vec = loadPointToAvx(origin);
-      __m256 point_G_vec = loadPointToAvx(point_G);
+      __m128 origin_vec = loadPointToSse(origin);
+      __m128 point_G_vec = loadPointToSse(point_G);
 
       for (const AnyIndex& global_voxel_idx : global_voxel_indices) {
         BlockIndex block_idx = getBlockIndexFromGlobalVoxelIndex(
@@ -250,7 +240,7 @@ class TsdfIntegrator {
         TsdfVoxel& tsdf_voxel = block->getVoxelByVoxelIndex(local_voxel_idx);
 
 
-        __m256 voxel_center_G_vec = loadPointToAvx(voxel_center_G);
+        __m128 voxel_center_G_vec = loadPointToSse(voxel_center_G);
 
         updateTsdfVoxel(origin_vec, point_G_vec, voxel_center_G_vec, color,
                         truncation_distance, weight, &tsdf_voxel);
