@@ -15,7 +15,7 @@
 namespace voxblox_fast {
 
 // Types.
-typedef double FloatingPoint;
+typedef float FloatingPoint;
 typedef int IndexElement;
 
 typedef Eigen::Matrix<FloatingPoint, 3, 1> Point;
