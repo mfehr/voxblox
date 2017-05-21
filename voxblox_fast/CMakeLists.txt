@@ -80,6 +80,11 @@ catkin_add_gtest(test_tsdf_interpolator
 )
 target_link_libraries(test_tsdf_interpolator ${PROJECT_NAME} ${catkin_LIBRARIES})
 
+catkin_add_gtest(test_object_pool
+  test/test_object_pool.cc
+)
+target_link_libraries(test_object_pool ${PROJECT_NAME} ${catkin_LIBRARIES})
+
 ##########
 # EXPORT #
 ##########
