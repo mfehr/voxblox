@@ -294,7 +294,7 @@ class TsdfIntegrator {
     TsdfVoxel& tsdf_voxel =
         block->getVoxelByVoxelIndex(voxel_info.local_voxel_idx);
 
-    LOG(FATAL) << "aaa";
+    LOG(FATAL) << "Not implemented.";
 //    updateTsdfVoxel(origin, voxel_info.point_C, voxel_info.point_G,
 //                    voxel_center_G, voxel_info.voxel.color,
 //                    config_.default_truncation_distance,
