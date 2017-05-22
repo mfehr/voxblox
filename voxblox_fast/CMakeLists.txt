@@ -40,13 +40,8 @@ endif()
 #############
 cs_add_library(${PROJECT_NAME}
   src/core/block.cc
-  src/core/esdf_map.cc
-  src/integrator/esdf_integrator.cc
-  src/integrator/esdf_occ_integrator.cc
   src/io/mesh_ply.cc
   src/mesh/marching_cubes.cc
-  src/simulation/objects.cc
-  src/simulation/simulation_world.cc
   src/utils/protobuf_utils.cc
   src/utils/timing.cc
   ${PROTO_SRCS}
