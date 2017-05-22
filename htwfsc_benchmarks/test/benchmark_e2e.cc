@@ -61,7 +61,7 @@ class E2EBenchmark : public ::benchmark::Fixture {
 
   static constexpr double kMean = 0;
   static constexpr double kSigma = 0.05;
-  static constexpr size_t kNumPoints = 200u;
+  static constexpr size_t kNumPoints = 50000u;
   static constexpr double kRadius = 2.0;
 
   voxblox::TsdfIntegrator::Config config_;
