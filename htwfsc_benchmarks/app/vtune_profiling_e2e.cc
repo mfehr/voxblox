@@ -76,9 +76,12 @@ int main(int argc, char** argv) {
   google::ParseCommandLineFlags(&argc, &argv, true);
   FLAGS_alsologtostderr = 1;
 
+  const double kStupidOsXCantCompileThisRadiusMeters = 5.0;
+
   E2EBenchmarkFixture fixture;
   fixture.SetUp();
-  fixture.CreateSphere(fixture.kRadius, fixture.kNumPoints);
+  fixture.CreateSphere(kStupidOsXCantCompileThisRadiusMeters,
+                       fixture.kNumPoints);
 
   LOG(WARNING) << "Running baseline impl: " << FLAGS_use_baseline;
   if (FLAGS_use_baseline) {
