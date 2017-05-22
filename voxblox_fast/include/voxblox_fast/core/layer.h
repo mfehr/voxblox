@@ -225,7 +225,7 @@ class Layer {
   BlockHashMap block_map_;
 
   typedef ObjectPool<BlockType, /*kNumAlignedBytes=*/16,
-      /*kMemoryChunkSizeBytes=*/1024u * 1024u> BlockMemory;
+      /*kMemoryChunkSizeBytes=*/10 * 1024u * 1024u> BlockMemory;
   BlockMemory block_memory_;
 };
 
