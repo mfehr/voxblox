@@ -167,10 +167,14 @@ inline VoxelIndex getLocalFromGlobalVoxelIndex(const AnyIndex& global_voxel_idx,
                              global_voxel_idx.z() % voxels_per_side);
 
   // Make sure we're within bounds.
-  for (unsigned int i = 0u; i < 3u; ++i) {
-    if (local_voxel_idx(i) < 0) {
-      local_voxel_idx(i) += voxels_per_side;
-    }
+  if (local_voxel_idx(0) < 0) {
+    local_voxel_idx(0) += voxels_per_side;
+  }
+  if (local_voxel_idx(1) < 0) {
+    local_voxel_idx(1) += voxels_per_side;
+  }
+  if (local_voxel_idx(2) < 0) {
+    local_voxel_idx(2) += voxels_per_side;
   }
 
   return local_voxel_idx;
