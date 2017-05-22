@@ -19,6 +19,9 @@ class E2EBenchmark : public ::benchmark::Fixture {
     config_.max_ray_length_m = 50.0;
     fast_config_.max_ray_length_m = 50.0;
 
+    config_.use_weight_dropoff = false;
+    fast_config_.use_weight_dropoff = false;
+
     baseline_layer_.reset(new voxblox::Layer<voxblox::TsdfVoxel>(kVoxelSize, kVoxelsPerSide));
     fast_layer_.reset(new voxblox_fast::Layer<voxblox_fast::TsdfVoxel>(kVoxelSize, kVoxelsPerSide));
     baseline_integrator_.reset(
