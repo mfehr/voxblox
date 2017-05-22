@@ -77,7 +77,7 @@ class LayerTest {
 
   void CompareVoxel(const VoxelType& voxel_A, const VoxelTypeB& voxel_B) const;
 
-  static constexpr double kTolerance = 1e-10;
+  static constexpr double kTolerance = 1e-6;
 };
 
 template <>
