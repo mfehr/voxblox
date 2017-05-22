@@ -85,10 +85,10 @@ void LayerTest<voxblox::TsdfVoxel, voxblox_fast::TsdfVoxel>::CompareVoxel(const 
                                         const voxblox_fast::TsdfVoxel& voxel_B) const {
   CHECK_NEAR(voxel_A.distance, voxel_B.distance, kTolerance);
   CHECK_NEAR(voxel_A.weight, voxel_B.weight, kTolerance);
-  CHECK_EQ(voxel_A.color.r, voxel_B.color.r);
-  CHECK_EQ(voxel_A.color.g, voxel_B.color.g);
-  CHECK_EQ(voxel_A.color.b, voxel_B.color.b);
-  CHECK_EQ(voxel_A.color.a, voxel_B.color.a);
+  CHECK_NEAR(voxel_A.color.r, voxel_B.color.rgba[0], 1);
+  CHECK_NEAR(voxel_A.color.g, voxel_B.color.rgba[1], 1);
+  CHECK_NEAR(voxel_A.color.b, voxel_B.color.rgba[2], 1);
+  CHECK_NEAR(voxel_A.color.a, voxel_B.color.rgba[3], 1);
 }
 
 }  // namespace test

@@ -104,8 +104,9 @@ class TsdfIntegrator {
     }
 
     const float new_weight = tsdf_voxel->weight + updated_weight;
-    tsdf_voxel->color = Color::blendTwoColors(
-        tsdf_voxel->color, tsdf_voxel->weight, color, updated_weight);
+    Color::blendTwoColors(
+        tsdf_voxel->color, tsdf_voxel->weight, color, updated_weight,
+        &tsdf_voxel->color);
     const float new_sdf =
         (sdf * updated_weight + tsdf_voxel->distance * tsdf_voxel->weight) /
         new_weight;
@@ -285,8 +286,9 @@ class TsdfIntegrator {
       voxel_info.point_C = (voxel_info.point_C * voxel_info.voxel.weight +
                             point_C * point_weight) /
                            (voxel_info.voxel.weight + point_weight);
-      voxel_info.voxel.color = Color::blendTwoColors(
-          voxel_info.voxel.color, voxel_info.voxel.weight, color, point_weight);
+      Color::blendTwoColors(
+          voxel_info.voxel.color, voxel_info.voxel.weight, color, point_weight,
+          &voxel_info.voxel.color);
       voxel_info.voxel.weight += point_weight;
 
       // only take first point when clearing
