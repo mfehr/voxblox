@@ -4,6 +4,7 @@
 #include <array>
 #include <deque>
 #include <cmath>
+#include <memory>
 #include <unordered_set>
 
 #include <glog/logging.h>
@@ -15,6 +16,23 @@ class ObjectPool {
  public:
   static_assert(sizeof(ObjectType) < kMemoryChunkSizeBytes,
                 "Object must be smaller than the memory chunks.");
+
+  // HACK: The shared pointer will not relase any memory when its reference
+  // count goes to zero. BUT if the ObjectPool is released with existing
+  // shared_ptrs around, the underlying memory will be released and the
+  // shared_ptrs get invalid without notice. This leads to illegal access.
+  // The proper way to handle this is to issue WeakPtr's, removing shared_ptrs
+  // at all or keeping the ObjectPool in the global static area of the app.
+  template<class... Args>
+      std::shared_ptr<ObjectType> AllocateObjectShared(
+          Args&&... constructor_args) {
+      ObjectType* object = AllocateObject(constructor_args...);
+      return std::shared_ptr<ObjectType>(object, [this](ObjectType* element) {
+        // nothing will be deleted.
+        // TODO(schneith): fix the implementation:
+        // this->DeallocateObject(element) ...
+      });
+    }
 
   template<class... Args>
       ObjectType* AllocateObject(Args&&... constructor_args) {
@@ -149,18 +167,19 @@ class ObjectPool {
   }
 
   size_t GetIndexOfStoringMemoryChunk(const ObjectType* object) const {
+    const char* const object_char = reinterpret_cast<const char*>(object);
     for (size_t chunk_idx = 0u; chunk_idx < memory_chunks_.size();
         ++chunk_idx) {
       const char* const address_first_element =
           &memory_chunks_[chunk_idx].memory.front();
-      if (object < address_first_element) {
+      if (object_char < address_first_element) {
         // Object lies below this chunks address range.
         continue;
       }
 
       const char* const address_last_element =
           address_first_element + MemoryChunk::kNumSlots;
-      if (object < address_last_element) {
+      if (object_char < address_last_element) {
         // Object lies within this chunks address range.
         return chunk_idx;
       };

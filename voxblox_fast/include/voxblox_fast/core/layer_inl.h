@@ -145,7 +145,10 @@ bool Layer<VoxelType>::addBlockFromProto(const BlockProto& block_proto,
       << "The voxel type of this layer is not serializable!";
 
   if (isCompatible(block_proto)) {
-    typename BlockType::Ptr block_ptr(new BlockType(block_proto));
+    std::shared_ptr<BlockType> block_ptr =
+        block_memory_.AllocateObjectShared(block_proto);
+    CHECK(block_ptr);
+
     const BlockIndex block_index =
         getGridIndexFromOriginPoint(block_ptr->origin(), block_size_inv_);
     switch (strategy) {

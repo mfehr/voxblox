@@ -32,17 +32,32 @@ TEST(MemoryPool, AllocateGet) {
   EXPECT_EQ(abc2->c, 60);
 }
 
-TEST(MemoryPool, DeAllocateMemoryChunks) {
-  struct Abc {
-    Abc(int _a , int _b, int _c) : a(_a), b(_b), c(_c) {
-      std::cout << "ctor: " << a << "," << b << "," << c << std::endl;
+// TODO(schneith): Fix the impl hack with AllocateObjectShared.
+TEST(MemoryPool, DISABLE_AllocateSharedReleasing) {
+  struct Char {
+    Char(char _data) : data(_data) {
+      std::cout << "ctor: " << data << std::endl;
     }
-    ~Abc() {
-      std::cout << "dtor: " << a << "," << b << "," << c << std::endl;
+    ~Char() {
+      std::cout << "dtor: " << data << std::endl;
     }
-    int a, b, c;
+    char data;
   };
+  typedef std::shared_ptr<Char> CharPtr;
 
+  ObjectPool<Char, /*kNumAlignedBytes=*/1, /*kMemoryChunkSizeBytes=*/2> pool;
+  EXPECT_EQ(pool.GetNumMemoryChunks(), 0u);
+
+  {
+    CharPtr a = pool.AllocateObjectShared('a');
+    EXPECT_EQ(pool.GetNumMemoryChunks(), 1u);
+    EXPECT_EQ(a->data, 'a');
+  }
+  // CharPtr a went out of scope and the memory chunk should have been released.
+  EXPECT_EQ(pool.GetNumMemoryChunks(), 0u);
+}
+
+TEST(MemoryPool, DeAllocateMemoryChunks) {
   ObjectPool<char, /*kNumAlignedBytes=*/1, /*kMemoryChunkSizeBytes=*/2> pool;
 
   // Let's add 2 chars to fill up the first chunk.
@@ -87,6 +102,7 @@ TEST(MemoryPool, DeAllocateMemoryChunks) {
 int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);
   google::InitGoogleLogging(argv[0]);
+  FLAGS_alsologtostderr = 1;
   int result = RUN_ALL_TESTS();
   return result;
 }

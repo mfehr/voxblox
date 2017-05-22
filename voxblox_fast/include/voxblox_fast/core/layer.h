@@ -10,6 +10,7 @@
 #include "voxblox_fast/core/block.h"
 #include "voxblox_fast/core/block_hash.h"
 #include "voxblox_fast/core/common.h"
+#include "voxblox_fast/core/object_pool.h"
 #include "voxblox_fast/core/voxel.h"
 
 namespace voxblox_fast {
@@ -112,11 +113,12 @@ class Layer {
   }
 
   typename BlockType::Ptr allocateNewBlock(const BlockIndex& index) {
-    auto insert_status = block_map_.insert(std::make_pair(
-        index, std::shared_ptr<BlockType>(new BlockType(
-                   voxels_per_side_, voxel_size_,
-                   getOriginPointFromGridIndex(index, block_size_)))));
+    std::shared_ptr<BlockType> block = block_memory_.AllocateObjectShared(
+        voxels_per_side_, voxel_size_,
+        getOriginPointFromGridIndex(index, block_size_));
+    CHECK(block);
 
+    auto insert_status = block_map_.insert(std::make_pair(index, block));
     DCHECK(insert_status.second) << "Block already exists when allocating at "
                                  << index.transpose();
 
@@ -221,6 +223,10 @@ class Layer {
   FloatingPoint voxels_per_side_inv_;
 
   BlockHashMap block_map_;
+
+  typedef ObjectPool<BlockType, /*kNumAlignedBytes=*/16,
+      /*kMemoryChunkSizeBytes=*/1024u * 1024u> BlockMemory;
+  BlockMemory block_memory_;
 };
 
 }  // namespace voxblox
