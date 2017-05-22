@@ -81,25 +81,6 @@ class TsdfIntegrator {
     printf("Vector %s: [ %f\t%f\t%f\t%f ]\n", name, u.a[0], u.a[1], u.a[2], u.a[3]);
   }
 
-  inline __m128 loadPointToSse(const Point& point) {
-    __m128 p_x = _mm_load_ss(&point(0));
-    __m128 p_y = _mm_load_ss(&point(1));
-    __m128 p_z = _mm_load_ss(&point(2));
-    // Combine x and y first.
-    __m128 p_xy = _mm_movelh_ps(p_x, p_y);
-    // Reshuffle all 3 values into the correct places.
-    return _mm_shuffle_ps(p_xy, p_z, _MM_SHUFFLE(2, 0, 2, 0));
-  }
-
-  // This could potentially be faster, but it seems there's no guarantee
-  // regarding the alignment of Vector3f of eigen. It causes weird memory
-  // issues.
-  /*inline __m128 loadPointToSse(const Point& point) {
-    __m128i xy = _mm_loadl_epi64((const __m128i*)point.data());
-    __m128 z = _mm_load_ss(&point(2));
-    return _mm_movelh_ps(_mm_castsi128_ps(xy), z);
-  }*/
-
   inline __m128 dotProducts(const __m128 v, const __m128 v0, const __m128 v1,
                             const __m128 v2, const __m128 v3) {
     __m128 vv0 = _mm_mul_ps(v, v0);
@@ -252,6 +233,8 @@ class TsdfIntegrator {
                            const Pointcloud& points_C, const Colors& colors) {
     DCHECK_EQ(points_C.size(), colors.size());
 
+    //timing::Timing::Reset();
+
     timing::Timer integrate_timer("integrate");
 
     const Point& origin = T_G_C.getPosition();
@@ -312,6 +295,7 @@ class TsdfIntegrator {
       const int limit = global_voxel_indices.size() - 3;
       int i;
       for (i = 0; i < limit; i += 4) {
+        timing::Timer i1_timer("integrate/i1");
         BlockIndex block0_idx = getBlockIndexFromGlobalVoxelIndex(
             global_voxel_indices[i], voxels_per_side_inv_);
         BlockIndex block1_idx = getBlockIndexFromGlobalVoxelIndex(
@@ -320,7 +304,9 @@ class TsdfIntegrator {
             global_voxel_indices[i + 2], voxels_per_side_inv_);
         BlockIndex block3_idx = getBlockIndexFromGlobalVoxelIndex(
             global_voxel_indices[i + 3], voxels_per_side_inv_);
+        i1_timer.Stop();
 
+        timing::Timer i2_timer("integrate/i2");
         VoxelIndex local_voxel0_idx =
             getLocalFromGlobalVoxelIndex(global_voxel_indices[i],
                                          voxels_per_side_);
@@ -333,6 +319,7 @@ class TsdfIntegrator {
         VoxelIndex local_voxel3_idx =
             getLocalFromGlobalVoxelIndex(global_voxel_indices[i + 3],
                                          voxels_per_side_);
+        i2_timer.Stop();
 
         if (!block0 || block0_idx != last_block_idx) {
           block0 = layer_->allocateBlockPtrByIndex(block0_idx);
@@ -370,18 +357,23 @@ class TsdfIntegrator {
           block3->updated() = true;
         }
 
+        timing::Timer i3_timer("integrate/i3");
         const Point voxel0_center_G =
             block0->computeCoordinatesFromVoxelIndex(local_voxel0_idx);
-        TsdfVoxel& tsdf_voxel0 = block0->getVoxelByVoxelIndex(local_voxel0_idx);
         const Point voxel1_center_G =
             block1->computeCoordinatesFromVoxelIndex(local_voxel1_idx);
-        TsdfVoxel& tsdf_voxel1 = block1->getVoxelByVoxelIndex(local_voxel1_idx);
         const Point voxel2_center_G =
             block2->computeCoordinatesFromVoxelIndex(local_voxel2_idx);
-        TsdfVoxel& tsdf_voxel2 = block2->getVoxelByVoxelIndex(local_voxel2_idx);
         const Point voxel3_center_G =
             block3->computeCoordinatesFromVoxelIndex(local_voxel3_idx);
+        i3_timer.Stop();
+
+        timing::Timer i4_timer("integrate/i4");
+        TsdfVoxel& tsdf_voxel0 = block0->getVoxelByVoxelIndex(local_voxel0_idx);
+        TsdfVoxel& tsdf_voxel1 = block1->getVoxelByVoxelIndex(local_voxel1_idx);
+        TsdfVoxel& tsdf_voxel2 = block2->getVoxelByVoxelIndex(local_voxel2_idx);
         TsdfVoxel& tsdf_voxel3 = block3->getVoxelByVoxelIndex(local_voxel3_idx);
+        i4_timer.Stop();
 
         updateTsdfVoxelSse(voxel0_center_G, voxel1_center_G, voxel2_center_G,
                            voxel3_center_G, vec_origin, vec_v_point_origin, vec_dist_G,
@@ -414,6 +406,8 @@ class TsdfIntegrator {
       update_voxels_timer.Stop();
     }
     integrate_timer.Stop();
+
+    //std::cout << timing::Timing::Print();
   }
 
   inline void bundleRays(
