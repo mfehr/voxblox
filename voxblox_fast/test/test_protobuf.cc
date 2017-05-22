@@ -2,8 +2,8 @@
 
 #include <gtest/gtest.h>
 
-#include "./Block.pb.h"
-#include "./Layer.pb.h"
+#include "./FastBlock.pb.h"
+#include "./FastLayer.pb.h"
 #include "voxblox_fast/core/block.h"
 #include "voxblox_fast/core/layer.h"
 #include "voxblox_fast/core/voxel.h"
