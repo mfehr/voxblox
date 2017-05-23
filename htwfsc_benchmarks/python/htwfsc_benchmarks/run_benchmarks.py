@@ -50,7 +50,8 @@ def GeneratePerformancePlotOverParameters(benchmark_context, benchmark_data):
     for item in case_results:
       # Radii were multiplied by 10 to avoid casting the value to int
       # while storing as JSON. Check and fix.
-      parameters.append(item["radius_cm"] / 100.0)
+      print item
+      parameters.append(item["num_points"]) # / 100.0)
       runtime_seconds = item["cpu_time"] * \
           helpers.UnitToScaler(item["time_unit"])
       cycles.append(runtime_seconds * benchmark_context["mhz_per_cpu"] * 1e6)
@@ -109,9 +110,9 @@ parsed = parser.parse_args()
 
 # Build, run the benchmarks and collect the results.
 assert(os.path.isdir(parsed.voxblox_workspace))
-#helpers.RunAllBenchmarksOfPackage(parsed.voxblox_workspace, "voxblox")
+#helpers.RunAllBenchmarksOfPackage(parsed.voxblox_workspace, "htwfsc_benchmarks")
 benchmark_files = helpers.GetAllBenchmarkingResultsOfPackage(
-    parsed.voxblox_workspace, "voxblox")
+    parsed.voxblox_workspace, "htwfsc_benchmarks")
 
 # Generate a plot for each benchmark result file.
 figures = list()

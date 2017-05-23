@@ -5,7 +5,7 @@ find_package(catkin_simple REQUIRED)
 catkin_simple()
 
 set(CMAKE_MACOSX_RPATH 0)
-add_definitions(-std=c++11 -Wno-sign-compare -Wno-unused-value)
+add_definitions(-std=c++11 -Wno-sign-compare -Wno-unused-value -msse4.1 -mavx2 -march=native)
 
 cs_add_library(${PROJECT_NAME}
   src/simulation/sphere_simulator.cc
@@ -21,8 +21,8 @@ target_link_libraries(vtune_profiling_e2e ${PROJECT_NAME})
 ##############
 # BENCHMARKS #
 ##############
-add_benchmark(bm_cast_ray test/benchmark_cast_ray.cc)
-target_link_libraries(bm_cast_ray ${PROJECT_NAME})
+#add_benchmark(bm_cast_ray test/benchmark_cast_ray.cc)
+#target_link_libraries(bm_cast_ray ${PROJECT_NAME})
 
 add_benchmark(bm_e2e test/benchmark_e2e.cc)
 target_link_libraries(bm_e2e ${PROJECT_NAME})

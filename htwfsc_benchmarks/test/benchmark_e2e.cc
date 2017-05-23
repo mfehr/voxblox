@@ -75,25 +75,25 @@ class E2EBenchmark : public ::benchmark::Fixture {
 // BENCHMARK CONSTANT NUMBER OF POINTS WITH CHANGING RADIUS //
 //////////////////////////////////////////////////////////////
 
-BENCHMARK_DEFINE_F(E2EBenchmark, BM_baseline_radius)(benchmark::State& state) {
-  const double radius = static_cast<double>(state.range(0)) / 2.0;
-  state.counters["radius_cm"] = radius * 100;
-  CreateSphere(radius, kNumPoints);
-  while (state.KeepRunning()) {
-    baseline_integrator_->integratePointCloud(T_G_C, sphere_points_C, colors_);
-  }
-}
-BENCHMARK_REGISTER_F(E2EBenchmark, BM_baseline_radius)->DenseRange(1, 10, 1);
-
-BENCHMARK_DEFINE_F(E2EBenchmark, BM_fast_radius)(benchmark::State& state) {
-  const double radius = static_cast<double>(state.range(0)) / 2.0;
-  state.counters["radius_cm"] = radius * 100;
-  CreateSphere(radius, kNumPoints);
-  while (state.KeepRunning()) {
-    fast_integrator_->integratePointCloud(T_G_C, sphere_points_C, fast_colors_);
-  }
-}
-BENCHMARK_REGISTER_F(E2EBenchmark, BM_fast_radius)->DenseRange(1, 10, 1);
+//BENCHMARK_DEFINE_F(E2EBenchmark, BM_baseline_radius)(benchmark::State& state) {
+//  const double radius = static_cast<double>(state.range(0)) / 2.0;
+//  state.counters["radius_cm"] = radius * 100;
+//  CreateSphere(radius, kNumPoints);
+//  while (state.KeepRunning()) {
+//    baseline_integrator_->integratePointCloud(T_G_C, sphere_points_C, colors_);
+//  }
+//}
+//BENCHMARK_REGISTER_F(E2EBenchmark, BM_baseline_radius)->DenseRange(1, 10, 1);
+//
+//BENCHMARK_DEFINE_F(E2EBenchmark, BM_fast_radius)(benchmark::State& state) {
+//  const double radius = static_cast<double>(state.range(0)) / 2.0;
+//  state.counters["radius_cm"] = radius * 100;
+//  CreateSphere(radius, kNumPoints);
+//  while (state.KeepRunning()) {
+//    fast_integrator_->integratePointCloud(T_G_C, sphere_points_C, fast_colors_);
+//  }
+//}
+//BENCHMARK_REGISTER_F(E2EBenchmark, BM_fast_radius)->DenseRange(1, 10, 1);
 
 //////////////////////////////////////////////////////////////
 // BENCHMARK CONSTANT RADIUS WITH CHANGING NUMBER OF POINTS //
