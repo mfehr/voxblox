@@ -182,6 +182,32 @@ struct Color {
     *(int*)new_color->rgba = _mm_extract_epi32(pack2, 0);
   }
 
+  static void blendTwoColorsWithScaledWeightsSse(const Color& first_color,
+                                                 const __m128& first_weight,
+                                                 const __m128i& c2v,
+                                                 const __m128& second_weight,
+                                                 Color* new_color) {
+    __m128i c1v = _mm_setr_epi32(first_color.rgba[0], first_color.rgba[1],
+                                first_color.rgba[2], first_color.rgba[3]);
+
+    __m128 c1fv = _mm_cvtepi32_ps(c1v);
+    __m128 c2fv = _mm_cvtepi32_ps(c2v);
+
+    __m128 color_1 = _mm_mul_ps(c1fv, first_weight);
+    __m128 color_2 = _mm_mul_ps(c2fv, second_weight);
+
+    __m128 color_new_vec = _mm_add_ps(color_1, color_2);
+    __m128i color_new_int = _mm_cvttps_epi32(color_new_vec);
+
+    /*int a[4];
+    _mm_maskstore_epi32(a, mask, color_new_int);*/
+
+    __m128i pack1 = _mm_packus_epi32 (color_new_int, color_new_int);
+    __m128i pack2 = _mm_packus_epi16 (pack1, pack1);
+
+    *(int*)new_color->rgba = _mm_extract_epi32(pack2, 0);
+  }
+
   // Now a bunch of static colors to use! :)
   static const Color White() { return Color(255, 255, 255); }
   static const Color Black() { return Color(0, 0, 0); }
