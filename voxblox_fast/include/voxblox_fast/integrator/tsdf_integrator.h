@@ -168,27 +168,61 @@ class TsdfIntegrator {
     __m128 new_weight2 = _mm_shuffle_epi32(new_weights_scaled, _MM_SHUFFLE(2, 2, 2, 2));
     __m128 new_weight3 = _mm_shuffle_epi32(new_weights_scaled, _MM_SHUFFLE(3, 3, 3, 3));
 
-    Color::blendTwoColorsWithScaledWeightsSse(
-        tsdf_voxel0->color, voxel_weight0, vec_color_f,
-        new_weight0, &tsdf_voxel0->color);
+    __m128i c0v = _mm_setr_epi32(tsdf_voxel0->color.rgba[0], tsdf_voxel0->color.rgba[1],
+                                 tsdf_voxel0->color.rgba[2], tsdf_voxel0->color.rgba[3]);
+    __m128i c1v = _mm_setr_epi32(tsdf_voxel1->color.rgba[0], tsdf_voxel1->color.rgba[1],
+                                 tsdf_voxel1->color.rgba[2], tsdf_voxel1->color.rgba[3]);
+    __m128i c2v = _mm_setr_epi32(tsdf_voxel2->color.rgba[0], tsdf_voxel2->color.rgba[1],
+                                 tsdf_voxel2->color.rgba[2], tsdf_voxel2->color.rgba[3]);
+    __m128i c3v = _mm_setr_epi32(tsdf_voxel3->color.rgba[0], tsdf_voxel3->color.rgba[1],
+                                 tsdf_voxel3->color.rgba[2], tsdf_voxel3->color.rgba[3]);
+
+    __m128 c0fv = _mm_cvtepi32_ps(c0v);
+    __m128 c1fv = _mm_cvtepi32_ps(c1v);
+    __m128 c2fv = _mm_cvtepi32_ps(c2v);
+    __m128 c3fv = _mm_cvtepi32_ps(c3v);
+
+    __m128 color_voxel0 = _mm_mul_ps(c1fv, voxel_weight0);
+    __m128 color_voxel1 = _mm_mul_ps(c1fv, voxel_weight1);
+    __m128 color_voxel2 = _mm_mul_ps(c1fv, voxel_weight2);
+    __m128 color_voxel3 = _mm_mul_ps(c1fv, voxel_weight3);
+
+    __m128 color_new0 = _mm_mul_ps(vec_color_f, new_weight0);
+    __m128 color_new1 = _mm_mul_ps(vec_color_f, new_weight1);
+    __m128 color_new2 = _mm_mul_ps(vec_color_f, new_weight2);
+    __m128 color_new3 = _mm_mul_ps(vec_color_f, new_weight3);
+
+    __m128 blended_color0 = _mm_add_ps(color_voxel0, color_new0);
+    __m128 blended_color1 = _mm_add_ps(color_voxel1, color_new1);
+    __m128 blended_color2 = _mm_add_ps(color_voxel2, color_new2);
+    __m128 blended_color3 = _mm_add_ps(color_voxel3, color_new3);
+
+    __m128i blended_color_int0 = _mm_cvttps_epi32(blended_color0);
+    __m128i blended_color_int1 = _mm_cvttps_epi32(blended_color1);
+    __m128i blended_color_int2 = _mm_cvttps_epi32(blended_color2);
+    __m128i blended_color_int3 = _mm_cvttps_epi32(blended_color3);
+
+//    Color::blendTwoColorsWithScaledWeightsSse(
+//        tsdf_voxel0->color, voxel_weight0, vec_color_f,
+//        new_weight0, &tsdf_voxel0->color);
     tsdf_voxel0->distance = sdf_array[0];
     tsdf_voxel0->weight = weight_array[0];
 
-    Color::blendTwoColorsWithScaledWeightsSse(
-        tsdf_voxel1->color, voxel_weight1, vec_color_f,
-        new_weight1, &tsdf_voxel1->color);
+//    Color::blendTwoColorsWithScaledWeightsSse(
+//        tsdf_voxel1->color, voxel_weight1, vec_color_f,
+//        new_weight1, &tsdf_voxel1->color);
     tsdf_voxel1->distance = sdf_array[1];
     tsdf_voxel1->weight = weight_array[1];
 
-    Color::blendTwoColorsWithScaledWeightsSse(
-        tsdf_voxel2->color, voxel_weight2, vec_color_f,
-        new_weight2, &tsdf_voxel2->color);
+//    Color::blendTwoColorsWithScaledWeightsSse(
+//        tsdf_voxel2->color, voxel_weight2, vec_color_f,
+//        new_weight2, &tsdf_voxel2->color);
     tsdf_voxel2->distance = sdf_array[2];
     tsdf_voxel2->weight = weight_array[2];
 
-    Color::blendTwoColorsWithScaledWeightsSse(
-        tsdf_voxel3->color, voxel_weight3, vec_color_f,
-        new_weight3, &tsdf_voxel3->color);
+//    Color::blendTwoColorsWithScaledWeightsSse(
+//        tsdf_voxel3->color, voxel_weight3, vec_color_f,
+//        new_weight3, &tsdf_voxel3->color);
     tsdf_voxel3->distance = sdf_array[3];
     tsdf_voxel3->weight = weight_array[3];
   }
