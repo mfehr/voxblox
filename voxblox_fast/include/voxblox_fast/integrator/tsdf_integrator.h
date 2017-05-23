@@ -74,8 +74,114 @@ class TsdfIntegrator {
     return 0.0;
   }
 
-  inline void updateTsdfVoxel(const Point& origin, const Point& point_C,
-                              const Point& point_G, const Point& voxel_center,
+  inline __m128 dotProducts(const __m128 v, const __m128 v0, const __m128 v1,
+                            const __m128 v2, const __m128 v3) {
+    __m128 vv0 = _mm_mul_ps(v, v0);
+    __m128 vv1 = _mm_mul_ps(v, v1);
+    __m128 vv2 = _mm_mul_ps(v, v2);
+    __m128 vv3 = _mm_mul_ps(v, v3);
+
+    __m128 vv0_vv1 = _mm_hadd_ps(vv0, vv1);
+    __m128 vv2_vv3 = _mm_hadd_ps(vv2, vv3);
+
+    return _mm_hadd_ps(vv0_vv1, vv2_vv3);
+  }
+
+  inline void updateTsdfVoxelSse(
+      const Point& voxel0_center, const Point& voxel1_center,
+      const Point& voxel2_center, const Point& voxel3_center,
+      const __m128 vec_origin, const __m128 vec_v_point_origin,
+      const __m128 vec_dist_G, const __m128 vec_trunc_dist_pos,
+      const __m128 vec_trunc_dist_neg, const __m128 vec_weight,
+      const float weight, const Color& color, TsdfVoxel* tsdf_voxel0,
+      TsdfVoxel* tsdf_voxel1, TsdfVoxel* tsdf_voxel2, TsdfVoxel* tsdf_voxel3) {
+    __m128 v_voxel0_center = loadPointToSse(voxel0_center);
+    __m128 v_voxel1_center = loadPointToSse(voxel1_center);
+    __m128 v_voxel2_center = loadPointToSse(voxel2_center);
+    __m128 v_voxel3_center = loadPointToSse(voxel3_center);
+
+    __m128 v_voxel0_origin = _mm_sub_ps(v_voxel0_center, vec_origin);
+    __m128 v_voxel1_origin = _mm_sub_ps(v_voxel1_center, vec_origin);
+    __m128 v_voxel2_origin = _mm_sub_ps(v_voxel2_center, vec_origin);
+    __m128 v_voxel3_origin = _mm_sub_ps(v_voxel3_center, vec_origin);
+
+    __m128 dots = dotProducts(vec_v_point_origin, v_voxel0_origin,
+                              v_voxel1_origin, v_voxel2_origin,
+                              v_voxel3_origin);
+    __m128 dist_G_V = _mm_div_ps(dots, vec_dist_G);
+
+    __m128 voxel_weights = _mm_set_ps(tsdf_voxel3->weight, tsdf_voxel2->weight,
+                                      tsdf_voxel1->weight, tsdf_voxel0->weight);
+    __m128 voxel_distances = _mm_set_ps(tsdf_voxel3->distance,
+                                        tsdf_voxel2->distance,
+                                        tsdf_voxel1->distance,
+                                        tsdf_voxel0->distance);
+    __m128 new_weight = _mm_add_ps(vec_weight, voxel_weights);
+
+    __m128 sdf = _mm_sub_ps(vec_dist_G, dist_G_V);
+    __m128 upd_sdf = _mm_mul_ps(sdf, vec_weight);
+    __m128 cur_sdf = _mm_mul_ps(voxel_distances, voxel_weights);
+    __m128 new_sdf_temp = _mm_add_ps(upd_sdf, cur_sdf);
+    __m128 new_sdf = _mm_div_ps(new_sdf_temp, new_weight);
+
+    __m128 new_sdf_lim_up = _mm_min_ps(new_sdf, vec_trunc_dist_pos);
+    __m128 new_sdf_lim = _mm_max_ps(new_sdf_lim_up, vec_trunc_dist_neg);
+
+    float sdf_array[4];
+    _mm_store_ps(sdf_array, new_sdf_lim);
+
+    __m128 weight_limit = _mm_set1_ps(config_.max_weight);
+    __m128 weight_capped = _mm_min_ps(new_weight, weight_limit);
+    float weight_array[4];
+    _mm_store_ps(weight_array, weight_capped);
+
+    /*Point voxel0_origin = voxel0_center - origin;
+    FloatingPoint sdist_G_V = voxel0_origin.dot(v_point_origin) / dist_G;
+    float sdf_s = static_cast<float>(dist_G - sdist_G_V);
+    const float new_weight_s = tsdf_voxel0->weight + weight;
+    const float new_sdf_s =
+        (sdf_s * new_weight_s + tsdf_voxel0->distance * tsdf_voxel0->weight) /
+        new_weight_s;
+    const float new_sdf_lim_s = (new_sdf_s > 0.0)
+                                   ? std::min(truncation_distance, new_sdf_s)
+                                   : std::max(-truncation_distance, new_sdf_s);*/
+
+    __m128 voxel_weights_scaled = _mm_div_ps(voxel_weights, new_weight);
+    __m128 new_weights_scaled = _mm_div_ps(vec_weight, new_weight);
+
+    float voxel_weights_scaled_array[4];
+    _mm_store_ps(voxel_weights_scaled_array, voxel_weights_scaled);
+    float new_weights_scaled_array[4];
+    _mm_store_ps(new_weights_scaled_array, new_weights_scaled);
+
+    Color::blendTwoColorsWithScaledWeights(
+        tsdf_voxel0->color, voxel_weights_scaled_array[0], color,
+        new_weights_scaled_array[0], &tsdf_voxel0->color);
+    tsdf_voxel0->distance = sdf_array[0];
+    tsdf_voxel0->weight = weight_array[0];
+
+    Color::blendTwoColorsWithScaledWeights(
+        tsdf_voxel1->color, voxel_weights_scaled_array[1], color,
+        new_weights_scaled_array[1], &tsdf_voxel1->color);
+    tsdf_voxel1->distance = sdf_array[1];
+    tsdf_voxel1->weight = weight_array[1];
+
+    Color::blendTwoColorsWithScaledWeights(
+        tsdf_voxel2->color, voxel_weights_scaled_array[2], color,
+        new_weights_scaled_array[2], &tsdf_voxel2->color);
+    tsdf_voxel2->distance = sdf_array[2];
+    tsdf_voxel2->weight = weight_array[2];
+
+    Color::blendTwoColorsWithScaledWeights(
+        tsdf_voxel3->color, voxel_weights_scaled_array[3], color,
+        new_weights_scaled_array[3], &tsdf_voxel3->color);
+    tsdf_voxel3->distance = sdf_array[3];
+    tsdf_voxel3->weight = weight_array[3];
+  }
+
+  inline void updateTsdfVoxel(const Point& origin,
+                              const Point& v_point_origin, const FloatingPoint& dist_G,
+                              const Point& voxel_center,
                               const Color& color,
                               const float truncation_distance,
                               const float weight, TsdfVoxel* tsdf_voxel) {
@@ -84,9 +190,7 @@ class TsdfIntegrator {
     // Then check if the the magnitude of the vector is smaller or greater than
     // the original distance...
     Point v_voxel_origin = voxel_center - origin;
-    Point v_point_origin = point_G - origin;
 
-    FloatingPoint dist_G = v_point_origin.norm();
     // projection of a (v_voxel_origin) onto b (v_point_origin)
     FloatingPoint dist_G_V = v_voxel_origin.dot(v_point_origin) / dist_G;
 
@@ -96,16 +200,18 @@ class TsdfIntegrator {
     // Compute updated weight in case we use weight dropoff. It's easier here
     // that in getVoxelWeight as here we have the actual SDF for the voxel
     // already computed.
-    const FloatingPoint dropoff_epsilon = voxel_size_;
+    CHECK(!config_.use_weight_dropoff);
+    /*const FloatingPoint dropoff_epsilon = voxel_size_;
     if (config_.use_weight_dropoff && sdf < -dropoff_epsilon) {
       updated_weight = weight * (truncation_distance + sdf) /
                        (truncation_distance - dropoff_epsilon);
       updated_weight = std::max(updated_weight, 0.0f);
-    }
+    }*/
 
     const float new_weight = tsdf_voxel->weight + updated_weight;
-    tsdf_voxel->color = Color::blendTwoColors(
-        tsdf_voxel->color, tsdf_voxel->weight, color, updated_weight);
+    Color::blendTwoColors(
+        tsdf_voxel->color, tsdf_voxel->weight, color, updated_weight,
+        &tsdf_voxel->color);
     const float new_sdf =
         (sdf * updated_weight + tsdf_voxel->distance * tsdf_voxel->weight) /
         new_weight;
@@ -132,6 +238,9 @@ class TsdfIntegrator {
   void integratePointCloud(const Transformation& T_G_C,
                            const Pointcloud& points_C, const Colors& colors) {
     DCHECK_EQ(points_C.size(), colors.size());
+
+    //timing::Timing::Reset();
+
     timing::Timer integrate_timer("integrate");
 
     const Point& origin = T_G_C.getPosition();
@@ -169,42 +278,156 @@ class TsdfIntegrator {
       timing::Timer update_voxels_timer("integrate/update_voxels");
 
       BlockIndex last_block_idx = BlockIndex::Zero();
-      Block<TsdfVoxel>::Ptr block;
+      Block<TsdfVoxel>::Ptr block0;
+      Block<TsdfVoxel>::Ptr block1;
+      Block<TsdfVoxel>::Ptr block2;
+      Block<TsdfVoxel>::Ptr block3;
 
-      for (const AnyIndex& global_voxel_idx : global_voxel_indices) {
+      const float weight =
+          getVoxelWeight(point_C, point_G, origin, /*dummy=*/origin);
+
+      const Point v_point_origin = point_G - origin;
+      const FloatingPoint dist_G = v_point_origin.norm();
+      const __m128 vec_dist_G = _mm_set1_ps(dist_G);
+
+      const __m128 vec_origin = loadPointToSse(origin);
+      const __m128 vec_v_point_origin = loadPointToSse(v_point_origin);
+
+      const __m128 vec_trunc_dist_pos = _mm_set1_ps(truncation_distance);
+      const __m128 vec_trunc_dist_neg = _mm_set1_ps(-truncation_distance);
+
+      const __m128 vec_weight = _mm_set1_ps(weight);
+
+      const int limit = global_voxel_indices.size() - 3;
+      int i;
+      for (i = 0; i < limit; i += 4) {
+        //timing::Timer i1_timer("integrate/i1");
+        BlockIndex block0_idx = getBlockIndexFromGlobalVoxelIndex(
+            global_voxel_indices[i], voxels_per_side_inv_);
+        BlockIndex block1_idx = getBlockIndexFromGlobalVoxelIndex(
+            global_voxel_indices[i + 1], voxels_per_side_inv_);
+        BlockIndex block2_idx = getBlockIndexFromGlobalVoxelIndex(
+            global_voxel_indices[i + 2], voxels_per_side_inv_);
+        BlockIndex block3_idx = getBlockIndexFromGlobalVoxelIndex(
+            global_voxel_indices[i + 3], voxels_per_side_inv_);
+        //i1_timer.Stop();
+
+        //timing::Timer i2_timer("integrate/i2");
+        VoxelIndex local_voxel0_idx =
+            getLocalFromGlobalVoxelIndex(global_voxel_indices[i],
+                                         voxels_per_side_);
+        VoxelIndex local_voxel1_idx =
+            getLocalFromGlobalVoxelIndex(global_voxel_indices[i + 1],
+                                         voxels_per_side_);
+        VoxelIndex local_voxel2_idx =
+            getLocalFromGlobalVoxelIndex(global_voxel_indices[i + 2],
+                                         voxels_per_side_);
+        VoxelIndex local_voxel3_idx =
+            getLocalFromGlobalVoxelIndex(global_voxel_indices[i + 3],
+                                         voxels_per_side_);
+        //i2_timer.Stop();
+
+        if (!block0 || block0_idx != last_block_idx) {
+          block0 = layer_->allocateBlockPtrByIndex(block0_idx);
+          block0->updated() = true;
+        } else {
+          block0 = block3;
+          block0->updated() = true;
+        }
+
+        if (block1_idx == last_block_idx && block3) {
+          block1 = block3;
+          block1->updated() = true;
+        } else if (block1_idx == block0_idx) {
+          block1 = block0;
+          block1->updated() = true;
+        } else {
+          block1 = layer_->allocateBlockPtrByIndex(block1_idx);
+          block1->updated() = true;
+        }
+
+        if (block2_idx == last_block_idx && block3) {
+          block2 = block3;
+          block2->updated() = true;
+        } else if (block2_idx == block0_idx) {
+          block2 = block0;
+          block2->updated() = true;
+        } else if (block2_idx == block1_idx) {
+          block2 = block1;
+          block2->updated() = true;
+        } else {
+          block2 = layer_->allocateBlockPtrByIndex(block2_idx);
+          block2->updated() = true;
+        }
+
+        if (block3_idx == last_block_idx && block3) {
+          block3->updated() = true;
+        } else if (block3_idx == block0_idx) {
+          block3 = block0;
+          block3->updated() = true;
+        } else if (block3_idx == block1_idx) {
+          block3 = block1;
+          block3->updated() = true;
+        } else if (block3_idx == block2_idx) {
+          block3 = block2;
+          block3->updated() = true;
+        } else {
+          block3 = layer_->allocateBlockPtrByIndex(block3_idx);
+          block3->updated() = true;
+        }
+        last_block_idx = block3_idx;
+
+        //timing::Timer i3_timer("integrate/i3");
+        const Point voxel0_center_G =
+            block0->computeCoordinatesFromVoxelIndex(local_voxel0_idx);
+        const Point voxel1_center_G =
+            block1->computeCoordinatesFromVoxelIndex(local_voxel1_idx);
+        const Point voxel2_center_G =
+            block2->computeCoordinatesFromVoxelIndex(local_voxel2_idx);
+        const Point voxel3_center_G =
+            block3->computeCoordinatesFromVoxelIndex(local_voxel3_idx);
+        //i3_timer.Stop();
+
+        //timing::Timer i4_timer("integrate/i4");
+        TsdfVoxel& tsdf_voxel0 = block0->getVoxelByVoxelIndex(local_voxel0_idx);
+        TsdfVoxel& tsdf_voxel1 = block1->getVoxelByVoxelIndex(local_voxel1_idx);
+        TsdfVoxel& tsdf_voxel2 = block2->getVoxelByVoxelIndex(local_voxel2_idx);
+        TsdfVoxel& tsdf_voxel3 = block3->getVoxelByVoxelIndex(local_voxel3_idx);
+        //i4_timer.Stop();
+
+        updateTsdfVoxelSse(voxel0_center_G, voxel1_center_G, voxel2_center_G,
+                           voxel3_center_G, vec_origin, vec_v_point_origin, vec_dist_G,
+                           vec_trunc_dist_pos, vec_trunc_dist_neg, vec_weight, weight,
+                           color, &tsdf_voxel0,
+                           &tsdf_voxel1, &tsdf_voxel2, &tsdf_voxel3);
+      }
+
+      for (; i < global_voxel_indices.size(); ++i) {
         BlockIndex block_idx = getBlockIndexFromGlobalVoxelIndex(
-            global_voxel_idx, voxels_per_side_inv_);
+            global_voxel_indices[i], voxels_per_side_inv_);
         VoxelIndex local_voxel_idx =
-            getLocalFromGlobalVoxelIndex(global_voxel_idx, voxels_per_side_);
+            getLocalFromGlobalVoxelIndex(global_voxel_indices[i],
+                                         voxels_per_side_);
 
-        if (local_voxel_idx.x() < 0) {
-          local_voxel_idx.x() += voxels_per_side_;
-        }
-        if (local_voxel_idx.y() < 0) {
-          local_voxel_idx.y() += voxels_per_side_;
-        }
-        if (local_voxel_idx.z() < 0) {
-          local_voxel_idx.z() += voxels_per_side_;
-        }
-
-        if (!block || block_idx != last_block_idx) {
-          block = layer_->allocateBlockPtrByIndex(block_idx);
-          block->updated() = true;
+        if (!block3 || block_idx != last_block_idx) {
+          block3 = layer_->allocateBlockPtrByIndex(block_idx);
+          block3->updated() = true;
           last_block_idx = block_idx;
         }
 
         const Point voxel_center_G =
-            block->computeCoordinatesFromVoxelIndex(local_voxel_idx);
-        TsdfVoxel& tsdf_voxel = block->getVoxelByVoxelIndex(local_voxel_idx);
+            block3->computeCoordinatesFromVoxelIndex(local_voxel_idx);
+        TsdfVoxel& tsdf_voxel = block3->getVoxelByVoxelIndex(local_voxel_idx);
 
-        const float weight =
-            getVoxelWeight(point_C, point_G, origin, voxel_center_G);
-        updateTsdfVoxel(origin, point_C, point_G, voxel_center_G, color,
+        updateTsdfVoxel(origin, v_point_origin, dist_G, voxel_center_G, color,
                         truncation_distance, weight, &tsdf_voxel);
       }
+
       update_voxels_timer.Stop();
     }
     integrate_timer.Stop();
+
+    //std::cout << timing::Timing::Print();
   }
 
   inline void bundleRays(
@@ -251,10 +474,11 @@ class TsdfIntegrator {
     TsdfVoxel& tsdf_voxel =
         block->getVoxelByVoxelIndex(voxel_info.local_voxel_idx);
 
-    updateTsdfVoxel(origin, voxel_info.point_C, voxel_info.point_G,
+    LOG(FATAL) << "Not implemented.";
+   /* updateTsdfVoxel(origin, voxel_info.point_C, voxel_info.point_G,
                     voxel_center_G, voxel_info.voxel.color,
                     config_.default_truncation_distance,
-                    voxel_info.voxel.weight, &tsdf_voxel);
+                    voxel_info.voxel.weight, &tsdf_voxel);*/
   }
 
   void integrateVoxel(
@@ -285,8 +509,9 @@ class TsdfIntegrator {
       voxel_info.point_C = (voxel_info.point_C * voxel_info.voxel.weight +
                             point_C * point_weight) /
                            (voxel_info.voxel.weight + point_weight);
-      voxel_info.voxel.color = Color::blendTwoColors(
-          voxel_info.voxel.color, voxel_info.voxel.weight, color, point_weight);
+      Color::blendTwoColors(
+          voxel_info.voxel.color, voxel_info.voxel.weight, color, point_weight,
+          &voxel_info.voxel.color);
       voxel_info.voxel.weight += point_weight;
 
       // only take first point when clearing
