@@ -88,7 +88,7 @@ BENCHMARK_DEFINE_F(E2EBenchmark, BM_baseline_radius)(benchmark::State& state) {
   while (state.KeepRunning()) {
     baseline_integrator_->integratePointCloud(T_G_C, sphere_points_C, colors_);
   }
-  std::cout << std::endl << voxblox::timing::Timing::Print() << std::endl;
+  // std::cout << std::endl << voxblox::timing::Timing::Print() << std::endl;
 }
 BENCHMARK_REGISTER_F(E2EBenchmark, BM_baseline_radius)->DenseRange(1, 10, 1);
 
@@ -99,7 +99,7 @@ BENCHMARK_DEFINE_F(E2EBenchmark, BM_fast_radius)(benchmark::State& state) {
   while (state.KeepRunning()) {
     fast_integrator_->integratePointCloud(T_G_C, sphere_points_C, fast_colors_);
   }
-  std::cout << std::endl << voxblox_fast::timing::Timing::Print() << std::endl;
+  // std::cout << std::endl << voxblox_fast::timing::Timing::Print() << std::endl;
 }
 BENCHMARK_REGISTER_F(E2EBenchmark, BM_fast_radius)->DenseRange(1, 10, 1);
 
@@ -115,7 +115,7 @@ BENCHMARK_DEFINE_F(E2EBenchmark, BM_baseline_num_points)
   while (state.KeepRunning()) {
     baseline_integrator_->integratePointCloud(T_G_C, sphere_points_C, colors_);
   }
-  std::cout << std::endl << voxblox::timing::Timing::Print() << std::endl;
+  // std::cout << std::endl << voxblox::timing::Timing::Print() << std::endl;
 }
 BENCHMARK_REGISTER_F(E2EBenchmark, BM_baseline_num_points)
     ->RangeMultiplier(2)
@@ -128,7 +128,7 @@ BENCHMARK_DEFINE_F(E2EBenchmark, BM_fast_num_points)(benchmark::State& state) {
   while (state.KeepRunning()) {
     fast_integrator_->integratePointCloud(T_G_C, sphere_points_C, fast_colors_);
   }
-  std::cout << std::endl << voxblox_fast::timing::Timing::Print() << std::endl;
+  // std::cout << std::endl << voxblox_fast::timing::Timing::Print() << std::endl;
 }
 BENCHMARK_REGISTER_F(E2EBenchmark, BM_fast_num_points)
     ->RangeMultiplier(2)

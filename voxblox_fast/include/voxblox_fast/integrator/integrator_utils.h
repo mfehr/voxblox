@@ -114,13 +114,13 @@ inline void castRayInVolume(
   } else {
     // If we are not already inside the volume, compute intersection of ray with
     // volume to get a new start index.
-    timing::Timer find_intersection(
-        "integrate/block_ray_casting/voxel_ray_casting/intersection");
+    // timing::Timer find_intersection(
+        // "integrate/block_ray_casting/voxel_ray_casting/intersection");
     Point start_intersection;
     CHECK(findIntersectionPoint(
         start_scaled, ray_scaled, min_index.cast<FloatingPoint>(),
         max_index.cast<FloatingPoint>().array() + 1.0, &start_intersection));
-    find_intersection.Stop();
+    // find_intersection.Stop();
 
     curr_index = getGridIndexFromPoint(start_intersection);
 
@@ -142,8 +142,8 @@ inline void castRayInVolume(
     return;
   }
 
-  timing::Timer ray_casting(
-      "integrate/block_ray_casting/voxel_ray_casting/ray_casting");
+  // timing::Timer ray_casting(
+  //     "integrate/block_ray_casting/voxel_ray_casting/ray_casting");
   // Prepare variables for ray casting.
   const AnyIndex ray_step_signs = ray_scaled.unaryExpr(std::ptr_fun(signum));
 
@@ -188,7 +188,7 @@ inline void castRayInVolume(
       entered_volume = true;
     } else {
       if (entered_volume) {
-        ray_casting.Stop();
+        // ray_casting.Stop();
         return;
       } else {
         // CHECK(false) << "There is something wrong with the ray tracing! There
@@ -199,7 +199,7 @@ inline void castRayInVolume(
       }
     }
   }
-  ray_casting.Stop();
+  // ray_casting.Stop();
 }
 
 // This function assumes PRE-SCALED coordinates, where one unit = one voxel

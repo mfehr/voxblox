@@ -133,7 +133,7 @@ class TsdfIntegrator {
                            const Pointcloud& points_C, const Colors& colors) {
     const size_t num_points = points_C.size();
     DCHECK_EQ(num_points, colors.size());
-    timing::Timer integrate_timer("integrate");
+    // timing::Timer integrate_timer("integrate");
 
     const size_t voxels_per_side_minus_one = voxels_per_side_ - 1u;
 
@@ -141,7 +141,7 @@ class TsdfIntegrator {
     const FloatingPoint truncation_distance =
         config_.default_truncation_distance;
 
-    timing::Timer block_bundling_timer("integrate/block_bundling");
+    // timing::Timer block_bundling_timer("integrate/block_bundling");
     std::vector<PointQuadruple> start_end_point_vector(num_points);
     BlockHashMapType<std::vector<size_t>>::type rays_per_block;
     for (size_t pt_idx = 0u; pt_idx < num_points; ++pt_idx) {
@@ -179,17 +179,17 @@ class TsdfIntegrator {
         rays_per_block[block_idx].push_back(pt_idx);
       }
     }
-    block_bundling_timer.Stop();
+    // block_bundling_timer.Stop();
 
-    timing::Timer block_allocation_timer("integrate/block_allocation");
+    // timing::Timer block_allocation_timer("integrate/block_allocation");
     for (const std::pair<BlockIndex, std::vector<size_t>>& block_rays :
          rays_per_block) {
       const BlockIndex& block_idx = block_rays.first;
       layer_->allocateBlockPtrByIndex(block_idx);
     }
-    block_allocation_timer.Stop();
+    // block_allocation_timer.Stop();
 
-    timing::Timer block_ray_casting_timer("integrate/block_ray_casting");
+    // timing::Timer block_ray_casting_timer("integrate/block_ray_casting");
     for (const std::pair<BlockIndex, std::vector<size_t>>& block_rays :
          rays_per_block) {
       const BlockIndex& block_idx = block_rays.first;
@@ -207,16 +207,16 @@ class TsdfIntegrator {
 
         const Color& color = colors[pt_idx];
 
-        timing::Timer voxel_ray_casting(
-            "integrate/block_ray_casting/voxel_ray_casting");
+        // timing::Timer voxel_ray_casting(
+        //     "integrate/block_ray_casting/voxel_ray_casting");
         IndexVector local_voxel_indices;
         castRayInVolume(start_scaled, end_scaled, min_idx, max_idx,
                         &local_voxel_indices);
         DCHECK_GT(local_voxel_indices.size(), 0u);
-        voxel_ray_casting.Stop();
+        // voxel_ray_casting.Stop();
 
-        timing::Timer update_voxels_timer(
-            "integrate/block_ray_casting/update_voxels");
+        // timing::Timer update_voxels_timer(
+        //     "integrate/block_ray_casting/update_voxels");
         for (const AnyIndex& local_voxel_idx : local_voxel_indices) {
           const Point voxel_center_G =
               block.computeCoordinatesFromVoxelIndex(local_voxel_idx);
@@ -227,11 +227,11 @@ class TsdfIntegrator {
           updateTsdfVoxel(origin, point_C, point_G, voxel_center_G, color,
                           truncation_distance, weight, &tsdf_voxel);
         }
-        update_voxels_timer.Stop();
+        // update_voxels_timer.Stop();
       }
     }
-    block_ray_casting_timer.Stop();
-    integrate_timer.Stop();
+    // block_ray_casting_timer.Stop();
+    // integrate_timer.Stop();
   }
 
   inline void bundleRays(
