@@ -52,10 +52,10 @@ void Block<TsdfVoxel>::deserializeFromIntegers(
     memcpy(&(voxel.distance), &bytes_1, sizeof(bytes_1));
     memcpy(&(voxel.weight), &bytes_2, sizeof(bytes_2));
 
-    voxel.color.r = static_cast<uint8_t>(bytes_3 >> 24);
-    voxel.color.g = static_cast<uint8_t>((bytes_3 & 0x00FF0000) >> 16);
-    voxel.color.b = static_cast<uint8_t>((bytes_3 & 0x0000FF00) >> 8);
-    voxel.color.a = static_cast<uint8_t>(bytes_3 & 0x000000FF);
+    voxel.color.rgba[0] = static_cast<uint8_t>(bytes_3 >> 24);
+    voxel.color.rgba[1] = static_cast<uint8_t>((bytes_3 & 0x00FF0000) >> 16);
+    voxel.color.rgba[2] = static_cast<uint8_t>((bytes_3 & 0x0000FF00) >> 8);
+    voxel.color.rgba[3] = static_cast<uint8_t>(bytes_3 & 0x000000FF);
   }
 }
 
@@ -121,10 +121,10 @@ void Block<TsdfVoxel>::serializeToIntegers(std::vector<uint32_t>* data) const {
         reinterpret_cast<const uint32_t*>(&voxel.weight);
     data->push_back(*bytes_2_ptr);
 
-    data->push_back(static_cast<uint32_t>(voxel.color.a) |
-                    (static_cast<uint32_t>(voxel.color.b) << 8) |
-                    (static_cast<uint32_t>(voxel.color.g) << 16) |
-                    (static_cast<uint32_t>(voxel.color.r) << 24));
+    data->push_back(static_cast<uint32_t>(voxel.color.rgba[3]) |
+                    (static_cast<uint32_t>(voxel.color.rgba[2]) << 8) |
+                    (static_cast<uint32_t>(voxel.color.rgba[1]) << 16) |
+                    (static_cast<uint32_t>(voxel.color.rgba[0]) << 24));
   }
   CHECK_EQ(num_voxels_ * kNumDataPacketsPerVoxel, data->size());
 }

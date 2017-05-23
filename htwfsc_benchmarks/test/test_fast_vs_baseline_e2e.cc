@@ -41,6 +41,9 @@ class FastE2ETest : public ::testing::Test {
     std::normal_distribution<double> angle_dist(0.0,
                                                 2.0 * 3.141592653589793238463);
 
+    config_.use_weight_dropoff = false;
+    fast_config_.use_weight_dropoff = false;
+
     baseline_layer_.reset(new voxblox::Layer<voxblox::TsdfVoxel>(kVoxelSize, kVoxelsPerSide));
     fast_layer_.reset(new voxblox_fast::Layer<voxblox_fast::TsdfVoxel>(kVoxelSize, kVoxelsPerSide));
     baseline_integrator_.reset(

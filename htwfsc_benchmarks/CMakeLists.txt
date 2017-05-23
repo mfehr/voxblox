@@ -5,7 +5,7 @@ find_package(catkin_simple REQUIRED)
 catkin_simple()
 
 set(CMAKE_MACOSX_RPATH 0)
-add_definitions(-std=c++11 -Wno-sign-compare -Wno-unused-value)
+add_definitions(-std=c++11 -Wno-sign-compare -Wno-unused-value -msse4.1 -mavx2 -march=native)
 
 cs_add_library(${PROJECT_NAME}
   src/simulation/sphere_simulator.cc
