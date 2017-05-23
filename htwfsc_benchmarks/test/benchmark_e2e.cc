@@ -19,23 +19,29 @@ class E2EBenchmark : public ::benchmark::Fixture {
     config_.max_ray_length_m = 50.0;
     fast_config_.max_ray_length_m = 50.0;
 
-    baseline_layer_.reset(new voxblox::Layer<voxblox::TsdfVoxel>(kVoxelSize, kVoxelsPerSide));
-    fast_layer_.reset(new voxblox_fast::Layer<voxblox_fast::TsdfVoxel>(kVoxelSize, kVoxelsPerSide));
+    baseline_layer_.reset(
+        new voxblox::Layer<voxblox::TsdfVoxel>(kVoxelSize, kVoxelsPerSide));
+    fast_layer_.reset(new voxblox_fast::Layer<voxblox_fast::TsdfVoxel>(
+        kVoxelSize, kVoxelsPerSide));
     baseline_integrator_.reset(
         new voxblox::TsdfIntegrator(config_, baseline_layer_.get()));
     fast_integrator_.reset(
         new voxblox_fast::TsdfIntegrator(fast_config_, fast_layer_.get()));
     T_G_C = voxblox::Transformation();
+
+    T_G_C.getPosition() = voxblox::Point(1e-4, 1e-4, 1e-4);
   }
 
   void CreateSphere(const double radius, const size_t num_points) {
     sphere_points_C.clear();
     htwfsc_benchmarks::sphere_sim::createSphere(kMean, kSigma, radius,
                                                 num_points, &sphere_points_C);
+
     colors_.clear();
     colors_.resize(sphere_points_C.size(), voxblox::Color(128, 255, 0));
     fast_colors_.clear();
-    fast_colors_.resize(sphere_points_C.size(), voxblox_fast::Color(128, 255, 0));
+    fast_colors_.resize(sphere_points_C.size(),
+                        voxblox_fast::Color(128, 255, 0));
   }
 
   void TearDown(const ::benchmark::State& /*state*/) {
@@ -82,6 +88,7 @@ BENCHMARK_DEFINE_F(E2EBenchmark, BM_baseline_radius)(benchmark::State& state) {
   while (state.KeepRunning()) {
     baseline_integrator_->integratePointCloud(T_G_C, sphere_points_C, colors_);
   }
+  std::cout << std::endl << voxblox::timing::Timing::Print() << std::endl;
 }
 BENCHMARK_REGISTER_F(E2EBenchmark, BM_baseline_radius)->DenseRange(1, 10, 1);
 
@@ -92,6 +99,7 @@ BENCHMARK_DEFINE_F(E2EBenchmark, BM_fast_radius)(benchmark::State& state) {
   while (state.KeepRunning()) {
     fast_integrator_->integratePointCloud(T_G_C, sphere_points_C, fast_colors_);
   }
+  std::cout << std::endl << voxblox_fast::timing::Timing::Print() << std::endl;
 }
 BENCHMARK_REGISTER_F(E2EBenchmark, BM_fast_radius)->DenseRange(1, 10, 1);
 
@@ -107,6 +115,7 @@ BENCHMARK_DEFINE_F(E2EBenchmark, BM_baseline_num_points)
   while (state.KeepRunning()) {
     baseline_integrator_->integratePointCloud(T_G_C, sphere_points_C, colors_);
   }
+  std::cout << std::endl << voxblox::timing::Timing::Print() << std::endl;
 }
 BENCHMARK_REGISTER_F(E2EBenchmark, BM_baseline_num_points)
     ->RangeMultiplier(2)
@@ -119,6 +128,7 @@ BENCHMARK_DEFINE_F(E2EBenchmark, BM_fast_num_points)(benchmark::State& state) {
   while (state.KeepRunning()) {
     fast_integrator_->integratePointCloud(T_G_C, sphere_points_C, fast_colors_);
   }
+  std::cout << std::endl << voxblox_fast::timing::Timing::Print() << std::endl;
 }
 BENCHMARK_REGISTER_F(E2EBenchmark, BM_fast_num_points)
     ->RangeMultiplier(2)

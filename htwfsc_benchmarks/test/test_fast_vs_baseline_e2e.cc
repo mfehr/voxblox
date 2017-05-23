@@ -19,6 +19,7 @@
 
 #include "htwfsc_benchmarks/simulation/sphere_simulator.h"
 #include "htwfsc_benchmarks/test/layer_test_utils.h"
+// #include "htwfsc_benchmarks/test/test_io.h"
 
 static constexpr size_t kSeed = 242u;
 
@@ -26,12 +27,12 @@ class FastE2ETest : public ::testing::Test {
  public:
   // Test data params.
   static constexpr double kMean = 0;
-  static constexpr double kSigma = 0.01;
-  static constexpr int kNumPoints = 1000;
-  static constexpr double kRadius = 0.75;
-  static constexpr size_t kNumDifferentSpheres = 10u;
+  static constexpr double kSigma = 0.001;
+  static constexpr int kNumPoints = 10000;
+  static constexpr double kRadius = 1.0;
+  static constexpr size_t kNumDifferentSpheres = 2u;
 
-  static constexpr double kVoxelSize = 0.05;
+  static constexpr double kVoxelSize = 0.03;
   static constexpr size_t kVoxelsPerSide = 16u;
 
  protected:
@@ -131,10 +132,17 @@ TEST_F(FastE2ETest, CompareToBaseline) {
                                           fast_colors_vector_[sphere_idx]);
   }
 
-  // baseline_mesh_integrator_->generateWholeMesh();
-  // CHECK(outputMeshLayerAsPly("baseline.ply", *baseline_mesh_layer_));
-  // fast_mesh_integrator_->generateWholeMesh();
-  // CHECK(outputMeshLayerAsPly("fast.ply", *fast_mesh_layer_));
+  baseline_mesh_integrator_->generateWholeMesh();
+  CHECK(outputMeshLayerAsPly("baseline.ply", *baseline_mesh_layer_));
+  fast_mesh_integrator_->generateWholeMesh();
+  CHECK(outputMeshLayerAsPly("fast.ply", *fast_mesh_layer_));
+
+  CHECK_EQ(config_.default_truncation_distance,
+           fast_config_.default_truncation_distance);
+
+  // htwfsc_benchmarks::test::OutputVoxelsAsPointCloud(
+  //     *baseline_layer_, *fast_layer_, config_.default_truncation_distance,
+  //     "baseline_visualization.ply", "fast_visualization.ply");
 
   layer_test_.CompareLayers(*baseline_layer_, *fast_layer_);
 }

@@ -24,12 +24,32 @@ inline bool findIntersectionPoint(const Point& start, const Ray& ray,
   bounds[0] = min;
   bounds[1] = max;
 
+  CHECK(!isnan(invdir.x()))
+      << "invdir: " << invdir.transpose() << " ray: " << ray.transpose();
+  CHECK(!isnan(invdir.y()))
+      << "invdir: " << invdir.transpose() << " ray: " << ray.transpose();
+  CHECK(!isnan(invdir.z()))
+      << "invdir: " << invdir.transpose() << " ray: " << ray.transpose();
+
+  CHECK(!isnan(sign.x())) << "sign: " << sign.transpose();
+  CHECK(!isnan(sign.y())) << "sign: " << sign.transpose();
+  CHECK(!isnan(sign.z())) << "sign: " << sign.transpose();
+
   float tmin, tmax, tymin, tymax, tzmin, tzmax, t;
 
-  tmin = (bounds[sign.x()].x() - start.x()) * invdir.x();
-  tmax = (bounds[1 - sign.x()].x() - start.x()) * invdir.x();
-  tymin = (bounds[sign.y()].y() - start.y()) * invdir.y();
-  tymax = (bounds[1 - sign.y()].y() - start.y()) * invdir.y();
+  // The min and max are there to filter out the cases where the bound - start
+  // // is zero and the inverse is +-inf, i.e.:
+  // 0 * +/-inf  = nan.
+  tmin = std::max(0., (bounds[sign.x()].x() - start.x()) * invdir.x());
+  tmax = std::min(1., (bounds[1 - sign.x()].x() - start.x()) * invdir.x());
+  tymin = std::max(0., (bounds[sign.y()].y() - start.y()) * invdir.y());
+  tymax = std::min(1., (bounds[1 - sign.y()].y() - start.y()) * invdir.y());
+
+  CHECK(!isnan(tmin)) << "tmin: " << tmin << " sign: " << sign.transpose()
+                      << " invdir: " << invdir.transpose();
+  CHECK(!isnan(tmax)) << "tmax: " << tmax;
+  CHECK(!isnan(tymin)) << "tymin: " << tymin;
+  CHECK(!isnan(tymax)) << "tymax: " << tymax;
 
   if ((tmin > tymax) || (tymin > tmax)) {
     return false;
@@ -38,8 +58,8 @@ inline bool findIntersectionPoint(const Point& start, const Ray& ray,
   if (tymin > tmin) tmin = tymin;
   if (tymax < tmax) tmax = tymax;
 
-  tzmin = (bounds[sign.z()].z() - start.z()) * invdir.z();
-  tzmax = (bounds[1 - sign.z()].z() - start.z()) * invdir.z();
+  tzmin = std::max(0., (bounds[sign.z()].z() - start.z()) * invdir.z());
+  tzmax = std::min(1., (bounds[1 - sign.z()].z() - start.z()) * invdir.z());
 
   if ((tmin > tzmax) || (tzmin > tmax)) {
     return false;
@@ -82,15 +102,24 @@ inline void castRayInVolume(
   if (curr_index.x() >= min_index.x() && curr_index.x() <= max_index.x() &&
       curr_index.y() >= min_index.y() && curr_index.y() <= max_index.y() &&
       curr_index.z() >= min_index.z() && curr_index.z() <= max_index.z()) {
+    // AnyIndex tmp_idx = curr_index - min_index;
+    // CHECK(tmp_idx.maxCoeff() < 16 && tmp_idx.minCoeff() >= 0)
+    //     << "curr_idx: " << curr_index.transpose() << " min_idx: " <<
+    //     min_index.transpose();
+
     indices->push_back(curr_index - min_index);
     entered_volume = true;
   } else {
     // If we are not already inside the volume, compute intersection of ray with
     // volume to get a new start index.
+    timing::Timer find_intersection(
+        "integrate/block_ray_casting/voxel_ray_casting/intersection");
     Point start_intersection;
     CHECK(findIntersectionPoint(
         start_scaled, ray_scaled, min_index.cast<FloatingPoint>(),
         max_index.cast<FloatingPoint>().array() + 1.0, &start_intersection));
+    find_intersection.Stop();
+
     curr_index = getGridIndexFromPoint(start_intersection);
 
     ray_scaled = end_scaled - start_intersection;
@@ -101,6 +130,11 @@ inline void castRayInVolume(
     if (curr_index.x() >= min_index.x() && curr_index.x() <= max_index.x() &&
         curr_index.y() >= min_index.y() && curr_index.y() <= max_index.y() &&
         curr_index.z() >= min_index.z() && curr_index.z() <= max_index.z()) {
+      // AnyIndex tmp_idx = curr_index - min_index;
+      // CHECK(tmp_idx.maxCoeff() < 16 && tmp_idx.minCoeff() >= 0)
+      //     << "curr_idx: " << curr_index.transpose()
+      //     << " min_idx: " << min_index.transpose();
+
       indices->push_back(curr_index - min_index);
       entered_volume = true;
     }
@@ -111,6 +145,8 @@ inline void castRayInVolume(
     return;
   }
 
+  timing::Timer ray_casting(
+      "integrate/block_ray_casting/voxel_ray_casting/ray_casting");
   // Prepare variables for ray casting.
   const AnyIndex ray_step_signs = ray_scaled.unaryExpr(std::ptr_fun(signum));
 
@@ -149,21 +185,25 @@ inline void castRayInVolume(
     curr_index[t_min_idx] += ray_step_signs[t_min_idx];
     t_to_next_boundary[t_min_idx] += t_step_size[t_min_idx];
 
-    // We only need to check if we entered the volume based on one dimension,
-    // since we always step in only one direction per iteration.
-    if (curr_index[t_min_idx] >= min_index[t_min_idx] &&
-        curr_index[t_min_idx] <= max_index[t_min_idx]) {
+    if (curr_index.x() >= min_index.x() && curr_index.x() <= max_index.x() &&
+        curr_index.y() >= min_index.y() && curr_index.y() <= max_index.y() &&
+        curr_index.z() >= min_index.z() && curr_index.z() <= max_index.z()) {
       indices->push_back(curr_index - min_index);
       entered_volume = true;
     } else {
-      CHECK(entered_volume)
-          << "There is something wrong with the ray tracing! There "
-          << "can be no more than one additional ray tracing step "
-          << "before entering the volume, otherwise the "
-          << "intersection point calculation is flawed.";
-      return;
+      if (entered_volume) {
+        ray_casting.Stop();
+        return;
+      } else {
+        // CHECK(false) << "There is something wrong with the ray tracing! There
+        // "
+        //           << "can be no more than one additional ray tracing step "
+        //           << "before entering the volume, otherwise the "
+        //           << "intersection point calculation is flawed.";
+      }
     }
   }
+  ray_casting.Stop();
 }
 
 // This function assumes PRE-SCALED coordinates, where one unit = one voxel
