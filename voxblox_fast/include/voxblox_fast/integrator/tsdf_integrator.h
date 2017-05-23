@@ -173,7 +173,7 @@ class TsdfIntegrator {
 
       IndexVector block_indices;
       castRay(start_scaled_block, end_scaled_block, &block_indices);
-      CHECK_GT(block_indices.size(), 0u);
+      DCHECK_GT(block_indices.size(), 0u);
 
       for (const BlockIndex& block_idx : block_indices) {
         rays_per_block[block_idx].push_back(pt_idx);
@@ -212,7 +212,7 @@ class TsdfIntegrator {
         IndexVector local_voxel_indices;
         castRayInVolume(start_scaled, end_scaled, min_idx, max_idx,
                         &local_voxel_indices);
-        CHECK_GT(local_voxel_indices.size(), 0u);
+        DCHECK_GT(local_voxel_indices.size(), 0u);
         voxel_ray_casting.Stop();
 
         timing::Timer update_voxels_timer(

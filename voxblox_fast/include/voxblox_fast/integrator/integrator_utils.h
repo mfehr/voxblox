@@ -24,32 +24,37 @@ inline bool findIntersectionPoint(const Point& start, const Ray& ray,
   bounds[0] = min;
   bounds[1] = max;
 
-  CHECK(!isnan(invdir.x()))
-      << "invdir: " << invdir.transpose() << " ray: " << ray.transpose();
-  CHECK(!isnan(invdir.y()))
-      << "invdir: " << invdir.transpose() << " ray: " << ray.transpose();
-  CHECK(!isnan(invdir.z()))
-      << "invdir: " << invdir.transpose() << " ray: " << ray.transpose();
-
-  CHECK(!isnan(sign.x())) << "sign: " << sign.transpose();
-  CHECK(!isnan(sign.y())) << "sign: " << sign.transpose();
-  CHECK(!isnan(sign.z())) << "sign: " << sign.transpose();
+  // CHECK(!isnan(invdir.x()))
+  //     << "invdir: " << invdir.transpose() << " ray: " << ray.transpose();
+  // CHECK(!isnan(invdir.y()))
+  //     << "invdir: " << invdir.transpose() << " ray: " << ray.transpose();
+  // CHECK(!isnan(invdir.z()))
+  //     << "invdir: " << invdir.transpose() << " ray: " << ray.transpose();
+  //
+  // CHECK(!isnan(sign.x())) << "sign: " << sign.transpose();
+  // CHECK(!isnan(sign.y())) << "sign: " << sign.transpose();
+  // CHECK(!isnan(sign.z())) << "sign: " << sign.transpose();
 
   float tmin, tmax, tymin, tymax, tzmin, tzmax, t;
 
   // The min and max are there to filter out the cases where the bound - start
   // // is zero and the inverse is +-inf, i.e.:
   // 0 * +/-inf  = nan.
-  tmin = std::max(0., (bounds[sign.x()].x() - start.x()) * invdir.x());
-  tmax = std::min(1., (bounds[1 - sign.x()].x() - start.x()) * invdir.x());
-  tymin = std::max(0., (bounds[sign.y()].y() - start.y()) * invdir.y());
-  tymax = std::min(1., (bounds[1 - sign.y()].y() - start.y()) * invdir.y());
+  // tmin = std::max(0., (bounds[sign.x()].x() - start.x()) * invdir.x());
+  // tmax = std::min(1., (bounds[1 - sign.x()].x() - start.x()) * invdir.x());
+  // tymin = std::max(0., (bounds[sign.y()].y() - start.y()) * invdir.y());
+  // tymax = std::min(1., (bounds[1 - sign.y()].y() - start.y()) * invdir.y());
 
-  CHECK(!isnan(tmin)) << "tmin: " << tmin << " sign: " << sign.transpose()
-                      << " invdir: " << invdir.transpose();
-  CHECK(!isnan(tmax)) << "tmax: " << tmax;
-  CHECK(!isnan(tymin)) << "tymin: " << tymin;
-  CHECK(!isnan(tymax)) << "tymax: " << tymax;
+  tmin = (bounds[sign.x()].x() - start.x()) * invdir.x();
+  tmax = (bounds[1 - sign.x()].x() - start.x()) * invdir.x();
+  tymin = (bounds[sign.y()].y() - start.y()) * invdir.y();
+  tymax = (bounds[1 - sign.y()].y() - start.y()) * invdir.y();
+
+  // CHECK(!isnan(tmin)) << "tmin: " << tmin << " sign: " << sign.transpose()
+  //                     << " invdir: " << invdir.transpose();
+  // CHECK(!isnan(tmax)) << "tmax: " << tmax;
+  // CHECK(!isnan(tymin)) << "tymin: " << tymin;
+  // CHECK(!isnan(tymax)) << "tymax: " << tymax;
 
   if ((tmin > tymax) || (tymin > tmax)) {
     return false;
@@ -58,8 +63,10 @@ inline bool findIntersectionPoint(const Point& start, const Ray& ray,
   if (tymin > tmin) tmin = tymin;
   if (tymax < tmax) tmax = tymax;
 
-  tzmin = std::max(0., (bounds[sign.z()].z() - start.z()) * invdir.z());
-  tzmax = std::min(1., (bounds[1 - sign.z()].z() - start.z()) * invdir.z());
+  // tzmin = std::max(0., (bounds[sign.z()].z() - start.z()) * invdir.z());
+  // tzmax = std::min(1., (bounds[1 - sign.z()].z() - start.z()) * invdir.z());
+  tzmin = (bounds[sign.z()].z() - start.z()) * invdir.z();
+  tzmax = (bounds[1 - sign.z()].z() - start.z()) * invdir.z();
 
   if ((tmin > tzmax) || (tzmin > tmax)) {
     return false;
@@ -102,11 +109,6 @@ inline void castRayInVolume(
   if (curr_index.x() >= min_index.x() && curr_index.x() <= max_index.x() &&
       curr_index.y() >= min_index.y() && curr_index.y() <= max_index.y() &&
       curr_index.z() >= min_index.z() && curr_index.z() <= max_index.z()) {
-    // AnyIndex tmp_idx = curr_index - min_index;
-    // CHECK(tmp_idx.maxCoeff() < 16 && tmp_idx.minCoeff() >= 0)
-    //     << "curr_idx: " << curr_index.transpose() << " min_idx: " <<
-    //     min_index.transpose();
-
     indices->push_back(curr_index - min_index);
     entered_volume = true;
   } else {
@@ -130,11 +132,6 @@ inline void castRayInVolume(
     if (curr_index.x() >= min_index.x() && curr_index.x() <= max_index.x() &&
         curr_index.y() >= min_index.y() && curr_index.y() <= max_index.y() &&
         curr_index.z() >= min_index.z() && curr_index.z() <= max_index.z()) {
-      // AnyIndex tmp_idx = curr_index - min_index;
-      // CHECK(tmp_idx.maxCoeff() < 16 && tmp_idx.minCoeff() >= 0)
-      //     << "curr_idx: " << curr_index.transpose()
-      //     << " min_idx: " << min_index.transpose();
-
       indices->push_back(curr_index - min_index);
       entered_volume = true;
     }
@@ -175,7 +172,6 @@ inline void castRayInVolume(
   const Ray t_step_size =
       ray_step_signs.cast<FloatingPoint>().cwiseQuotient(ray_scaled);
 
-  size_t extra_raytracing_steps = 0u;
   while (curr_index != end_index) {
     int t_min_idx;
     t_to_next_boundary.minCoeff(&t_min_idx);
