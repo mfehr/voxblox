@@ -111,7 +111,7 @@ parsed = parser.parse_args()
 assert(os.path.isdir(parsed.voxblox_workspace))
 #helpers.RunAllBenchmarksOfPackage(parsed.voxblox_workspace, "voxblox")
 benchmark_files = helpers.GetAllBenchmarkingResultsOfPackage(
-    parsed.voxblox_workspace, "voxblox")
+    parsed.voxblox_workspace, "htwfsc_benchmarks")
 
 # Generate a plot for each benchmark result file.
 figures = list()

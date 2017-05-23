@@ -245,9 +245,9 @@ inline BlockIndex getBlockIndexFromGlobalVoxelIndex(
   __m128 global_idx_float = _mm_cvtepi32_ps(global_idx);
   __m128 idx_over_voxels = _mm_mul_ps(global_idx_float, voxels_per_side_inv);
   __m128 floored = _mm_floor_ps(idx_over_voxels);
-  __m128 floored_int = _mm_cvtps_epi32(floored);
+  __m128i floored_int = _mm_cvtps_epi32(floored);
 
-  __declspec(align(16)) int result[4];
+  int result[4];
   _mm_store_si128 ((__m128i*)result, floored_int);
   return BlockIndex(result[0], result[1], result[2]);
 }
@@ -268,18 +268,18 @@ inline VoxelIndex getLocalFromGlobalVoxelIndex(const AnyIndex& global_voxel_idx,
   __m128i zeros = _mm_set1_epi32(0);
   __m128i ones = _mm_set1_epi32(1);
 
-  __m128 mask_idx = _mm_cmplt_epi32(global_idx, zeros);
+  __m128 mask_idx = (__m128)_mm_cmplt_epi32(global_idx, zeros);
   __m128i masked_mones = _mm_castps_si128(mask_idx);
   __m128i masked_ones = (__m128i)_mm_andnot_ps(mask_idx, (__m128)ones);
   __m128i correct = _mm_add_epi32(masked_mones, masked_ones);
   __m128i modulo_with_neg = _mm_mullo_epi32(modulo, correct);
 
-  __m128 mask = _mm_cmplt_epi32(modulo_with_neg, zeros);
+  __m128i mask = _mm_cmplt_epi32(modulo_with_neg, zeros);
 
-  __m128i additions = (__m128i)_mm_and_ps(mask, (__m128)vec16);
+  __m128i additions = (__m128i)_mm_and_ps((__m128)mask, (__m128)vec16);
   __m128i modulo_in_range = _mm_add_epi32(modulo_with_neg, additions);
 
-  __declspec(align(16)) int result[4];
+  int result[4];
   _mm_store_si128((__m128i*)result, modulo_in_range);
   return VoxelIndex(result[0], result[1], result[2]);
 }

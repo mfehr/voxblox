@@ -79,7 +79,7 @@ class Block {
     __m128 idx_times_grid = _mm_mul_ps(idx_plus_half, voxel_size_vec_);
     __m128 result = _mm_add_ps(idx_times_grid, origin_vec_);
 
-    __declspec(align(16)) float result_array[4];
+    float result_array[4];
     _mm_store_ps(result_array, result);
     return Point(result[0], result[1], result[2]);
   }
