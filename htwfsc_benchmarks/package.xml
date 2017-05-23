@@ -23,4 +23,5 @@
   <depend>minkindr</depend>
   <depend>voxblox</depend>
   <depend>voxblox_fast</depend>
+  <depend>pcl_catkin</depend>
 </package>
