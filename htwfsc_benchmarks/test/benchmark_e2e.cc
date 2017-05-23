@@ -36,9 +36,9 @@ class E2EBenchmark : public ::benchmark::Fixture {
     htwfsc_benchmarks::sphere_sim::createSphere(kMean, kSigma, radius,
                                                 num_points, &sphere_points_C);
     colors_.clear();
-    colors_.resize(sphere_points_C.size(), voxblox::Color(128, 255, 0));
+    colors_.resize(sphere_points_C.size(), voxblox::Color(128, 253, 3));
     fast_colors_.clear();
-    fast_colors_.resize(sphere_points_C.size(), voxblox_fast::Color(128, 255, 0));
+    fast_colors_.resize(sphere_points_C.size(), voxblox_fast::Color(128, 253, 5));
   }
 
   void TearDown(const ::benchmark::State& /*state*/) {
