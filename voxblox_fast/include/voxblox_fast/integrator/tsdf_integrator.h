@@ -146,23 +146,35 @@ class TsdfIntegrator {
                                    ? std::min(truncation_distance, new_sdf_s)
                                    : std::max(-truncation_distance, new_sdf_s);*/
 
-    tsdf_voxel0->color = Color::blendTwoColors(
-        tsdf_voxel0->color, tsdf_voxel0->weight, color, weight);
+    __m128 voxel_weights_scaled = _mm_div_ps(voxel_weights, new_weight);
+    __m128 new_weights_scaled = _mm_div_ps(vec_weight, new_weight);
+
+    float voxel_weights_scaled_array[4];
+    _mm_store_ps(voxel_weights_scaled_array, voxel_weights_scaled);
+    float new_weights_scaled_array[4];
+    _mm_store_ps(new_weights_scaled_array, new_weights_scaled);
+
+    tsdf_voxel0->color = Color::blendTwoColorsWithScaledWeights(
+        tsdf_voxel0->color, voxel_weights_scaled_array[0], color,
+        new_weights_scaled_array[0]);
     tsdf_voxel0->distance = sdf_array[0];
     tsdf_voxel0->weight = weight_array[0];
 
-    tsdf_voxel1->color = Color::blendTwoColors(
-        tsdf_voxel1->color, tsdf_voxel1->weight, color, weight);
+    tsdf_voxel1->color = Color::blendTwoColorsWithScaledWeights(
+        tsdf_voxel1->color, voxel_weights_scaled_array[1], color,
+        new_weights_scaled_array[1]);
     tsdf_voxel1->distance = sdf_array[1];
     tsdf_voxel1->weight = weight_array[1];
 
-    tsdf_voxel2->color = Color::blendTwoColors(
-        tsdf_voxel2->color, tsdf_voxel2->weight, color, weight);
+    tsdf_voxel2->color = Color::blendTwoColorsWithScaledWeights(
+        tsdf_voxel2->color, voxel_weights_scaled_array[2], color,
+        new_weights_scaled_array[2]);
     tsdf_voxel2->distance = sdf_array[2];
     tsdf_voxel2->weight = weight_array[2];
 
-    tsdf_voxel3->color = Color::blendTwoColors(
-        tsdf_voxel3->color, tsdf_voxel3->weight, color, weight);
+    tsdf_voxel3->color = Color::blendTwoColorsWithScaledWeights(
+        tsdf_voxel3->color, voxel_weights_scaled_array[3], color,
+        new_weights_scaled_array[3]);
     tsdf_voxel3->distance = sdf_array[3];
     tsdf_voxel3->weight = weight_array[3];
   }
