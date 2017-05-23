@@ -317,38 +317,52 @@ class TsdfIntegrator {
         if (!block0 || block0_idx != last_block_idx) {
           block0 = layer_->allocateBlockPtrByIndex(block0_idx);
           block0->updated() = true;
-          last_block_idx = block0_idx;
         } else {
           block0 = block3;
           block0->updated() = true;
         }
 
-        if (!block1 || block1_idx != last_block_idx) {
-          block1 = layer_->allocateBlockPtrByIndex(block1_idx);
+        if (block1_idx == last_block_idx && block3) {
+          block1 = block3;
           block1->updated() = true;
-          last_block_idx = block1_idx;
-        } else {
+        } else if (block1_idx == block0_idx) {
           block1 = block0;
           block1->updated() = true;
+        } else {
+          block1 = layer_->allocateBlockPtrByIndex(block1_idx);
+          block1->updated() = true;
         }
 
-        if (!block2 || block2_idx != last_block_idx) {
-          block2 = layer_->allocateBlockPtrByIndex(block2_idx);
+        if (block2_idx == last_block_idx && block3) {
+          block2 = block3;
           block2->updated() = true;
-          last_block_idx = block2_idx;
-        } else {
+        } else if (block2_idx == block0_idx) {
+          block2 = block0;
+          block2->updated() = true;
+        } else if (block2_idx == block1_idx) {
           block2 = block1;
           block2->updated() = true;
+        } else {
+          block2 = layer_->allocateBlockPtrByIndex(block2_idx);
+          block2->updated() = true;
         }
 
-        if (!block3 || block3_idx != last_block_idx) {
-          block3 = layer_->allocateBlockPtrByIndex(block3_idx);
+        if (block3_idx == last_block_idx && block3) {
           block3->updated() = true;
-          last_block_idx = block2_idx;
-        } else {
+        } else if (block3_idx == block0_idx) {
+          block3 = block0;
+          block3->updated() = true;
+        } else if (block3_idx == block1_idx) {
+          block3 = block1;
+          block3->updated() = true;
+        } else if (block3_idx == block2_idx) {
           block3 = block2;
           block3->updated() = true;
+        } else {
+          block3 = layer_->allocateBlockPtrByIndex(block3_idx);
+          block3->updated() = true;
         }
+        last_block_idx = block3_idx;
 
         //timing::Timer i3_timer("integrate/i3");
         const Point voxel0_center_G =
