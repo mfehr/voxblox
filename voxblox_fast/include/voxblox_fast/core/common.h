@@ -184,14 +184,13 @@ struct Color {
 
   static void blendTwoColorsWithScaledWeightsSse(const Color& first_color,
                                                  const __m128& first_weight,
-                                                 const __m128i& c2v,
+                                                 const __m128& c2fv,
                                                  const __m128& second_weight,
                                                  Color* new_color) {
     __m128i c1v = _mm_setr_epi32(first_color.rgba[0], first_color.rgba[1],
                                 first_color.rgba[2], first_color.rgba[3]);
 
     __m128 c1fv = _mm_cvtepi32_ps(c1v);
-    __m128 c2fv = _mm_cvtepi32_ps(c2v);
 
     __m128 color_1 = _mm_mul_ps(c1fv, first_weight);
     __m128 color_2 = _mm_mul_ps(c2fv, second_weight);

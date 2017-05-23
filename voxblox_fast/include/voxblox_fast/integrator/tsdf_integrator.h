@@ -156,6 +156,7 @@ class TsdfIntegrator {
 
     __m128i vec_color = _mm_setr_epi32(color.rgba[0], color.rgba[1],
                                        color.rgba[2], color.rgba[3]);
+    __m128 vec_color_f = _mm_cvtepi32_ps(vec_color);
 
     __m128 voxel_weight0 = _mm_shuffle_epi32(voxel_weights_scaled, _MM_SHUFFLE(0, 0, 0, 0));
     __m128 voxel_weight1 = _mm_shuffle_epi32(voxel_weights_scaled, _MM_SHUFFLE(1, 1, 1, 1));
@@ -168,25 +169,25 @@ class TsdfIntegrator {
     __m128 new_weight3 = _mm_shuffle_epi32(new_weights_scaled, _MM_SHUFFLE(3, 3, 3, 3));
 
     Color::blendTwoColorsWithScaledWeightsSse(
-        tsdf_voxel0->color, voxel_weight0, vec_color,
+        tsdf_voxel0->color, voxel_weight0, vec_color_f,
         new_weight0, &tsdf_voxel0->color);
     tsdf_voxel0->distance = sdf_array[0];
     tsdf_voxel0->weight = weight_array[0];
 
     Color::blendTwoColorsWithScaledWeightsSse(
-        tsdf_voxel1->color, voxel_weight1, vec_color,
+        tsdf_voxel1->color, voxel_weight1, vec_color_f,
         new_weight1, &tsdf_voxel1->color);
     tsdf_voxel1->distance = sdf_array[1];
     tsdf_voxel1->weight = weight_array[1];
 
     Color::blendTwoColorsWithScaledWeightsSse(
-        tsdf_voxel2->color, voxel_weight2, vec_color,
+        tsdf_voxel2->color, voxel_weight2, vec_color_f,
         new_weight2, &tsdf_voxel2->color);
     tsdf_voxel2->distance = sdf_array[2];
     tsdf_voxel2->weight = weight_array[2];
 
     Color::blendTwoColorsWithScaledWeightsSse(
-        tsdf_voxel3->color, voxel_weight3, vec_color,
+        tsdf_voxel3->color, voxel_weight3, vec_color_f,
         new_weight3, &tsdf_voxel3->color);
     tsdf_voxel3->distance = sdf_array[3];
     tsdf_voxel3->weight = weight_array[3];
