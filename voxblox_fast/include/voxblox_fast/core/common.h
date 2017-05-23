@@ -91,6 +91,13 @@ inline void printVec4i(__m128 v, char const * name) {
   printf("Vector %s: [ %d\t%d\t%d\t%d ]\n", name, u.a[0], u.a[1], u.a[2], u.a[3]);
 }
 
+typedef union { __m128 v; float a[4]; } uf;
+inline void printVec4(__m128 v, char const * name) {
+  uf u;
+  u.v = v;
+  printf("Vector %s: [ %f\t%f\t%f\t%f ]\n", name, u.a[0], u.a[1], u.a[2], u.a[3]);
+}
+
 struct Color {
   Color() : r(0), g(0), b(0), a(0) {}
   Color(uint8_t _r, uint8_t _g, uint8_t _b) : Color(_r, _g, _b, 255) {}
@@ -189,7 +196,7 @@ inline BlockIndex getBlockIndexFromGlobalVoxelIndex(
   __m128 floored = _mm_floor_ps(idx_over_voxels);
   __m128 floored_int = _mm_cvtps_epi32(floored);
 
-  int result[4];
+  __declspec(align(16)) int result[4];
   _mm_store_si128 ((__m128i*)result, floored_int);
   return BlockIndex(result[0], result[1], result[2]);
 }
@@ -200,55 +207,30 @@ inline VoxelIndex getLocalFromGlobalVoxelIndex(const AnyIndex& global_voxel_idx,
 
   __m128i global_idx = _mm_set_epi32(0, global_voxel_idx(2),
                                      global_voxel_idx(1), global_voxel_idx(0));
-  printVec4i(global_idx, "global_idx");
-
-  __m128i idx_mod = _mm_abs_epi32(global_idx);
-
-  __m128i idx_by_16 = _mm_srli_epi32(idx_mod, 4);
-  printVec4i(idx_by_16, "idx_by_16");
+  __m128i idx_abs = _mm_abs_epi32(global_idx);
+  __m128i idx_by_16 = _mm_srli_epi32(idx_abs, 4);
 
   __m128i vec16 = _mm_set1_epi32(16);
   __m128i idx_round = _mm_mullo_epi32(idx_by_16, vec16);
-  __m128i modulo = _mm_sub_epi32(idx_mod, idx_round);
-  printVec4i(modulo, "modulo");
+  __m128i modulo = _mm_sub_epi32(idx_abs, idx_round);
 
   __m128i zeros = _mm_set1_epi32(0);
-  __m128i mones = _mm_set1_epi32(-1);
-  __m128i ones = _mm_set1_epi32(-1);
+  __m128i ones = _mm_set1_epi32(1);
 
   __m128 mask_idx = _mm_cmplt_epi32(global_idx, zeros);
-  __m128i mcorrect = (__m128i)_mm_and_ps(mask_idx, (__m128)mones);
-  __m128i ncorrect = (__m128i)_mm_andnot_ps(mask_idx, (__m128)ones);
-  __m128i correct = _mm_add_epi32(mcorrect, ncorrect);
-  printVec4i(correct, "correct");
+  __m128i masked_mones = _mm_castps_si128(mask_idx);
+  __m128i masked_ones = (__m128i)_mm_andnot_ps(mask_idx, (__m128)ones);
+  __m128i correct = _mm_add_epi32(masked_mones, masked_ones);
   __m128i modulo_with_neg = _mm_mullo_epi32(modulo, correct);
-  printVec4i(modulo_with_neg, "modulo_with_neg");
-
-  VoxelIndex aaa(global_voxel_idx.x() % voxels_per_side,
-                               global_voxel_idx.y() % voxels_per_side,
-                               global_voxel_idx.z() % voxels_per_side);
-  std::cout << aaa.transpose() << std::endl;
 
   __m128 mask = _mm_cmplt_epi32(modulo_with_neg, zeros);
 
   __m128i additions = (__m128i)_mm_and_ps(mask, (__m128)vec16);
   __m128i modulo_in_range = _mm_add_epi32(modulo_with_neg, additions);
 
-  int result[4];
+  __declspec(align(16)) int result[4];
   _mm_store_si128((__m128i*)result, modulo_in_range);
-  VoxelIndex local_voxel_idx(result[0], result[1], result[2]);
-
-  // Make sure we're within bounds.
-  for (unsigned int i = 0u; i < 3u; ++i) {
-    if (local_voxel_idx(i) < 0) {
-      local_voxel_idx(i) += voxels_per_side;
-    }
-  }
-
-  /*VoxelIndex local_voxel_idx(global_voxel_idx.x() % voxels_per_side,
-                             global_voxel_idx.y() % voxels_per_side,
-                             global_voxel_idx.z() % voxels_per_side);*/
-  return local_voxel_idx;
+  return VoxelIndex(result[0], result[1], result[2]);
 }
 
 // Math functions.

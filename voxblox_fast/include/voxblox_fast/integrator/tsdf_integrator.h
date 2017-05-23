@@ -74,13 +74,6 @@ class TsdfIntegrator {
     return 0.0;
   }
 
-  typedef union { __m128 v; float a[4]; } uf;
-  void printVec4(__m128 v, char const * name) {
-    uf u;
-    u.v = v;
-    printf("Vector %s: [ %f\t%f\t%f\t%f ]\n", name, u.a[0], u.a[1], u.a[2], u.a[3]);
-  }
-
   inline __m128 dotProducts(const __m128 v, const __m128 v0, const __m128 v1,
                             const __m128 v2, const __m128 v3) {
     __m128 vv0 = _mm_mul_ps(v, v0);
@@ -295,7 +288,7 @@ class TsdfIntegrator {
       const int limit = global_voxel_indices.size() - 3;
       int i;
       for (i = 0; i < limit; i += 4) {
-        timing::Timer i1_timer("integrate/i1");
+        //timing::Timer i1_timer("integrate/i1");
         BlockIndex block0_idx = getBlockIndexFromGlobalVoxelIndex(
             global_voxel_indices[i], voxels_per_side_inv_);
         BlockIndex block1_idx = getBlockIndexFromGlobalVoxelIndex(
@@ -304,9 +297,9 @@ class TsdfIntegrator {
             global_voxel_indices[i + 2], voxels_per_side_inv_);
         BlockIndex block3_idx = getBlockIndexFromGlobalVoxelIndex(
             global_voxel_indices[i + 3], voxels_per_side_inv_);
-        i1_timer.Stop();
+        //i1_timer.Stop();
 
-        timing::Timer i2_timer("integrate/i2");
+        //timing::Timer i2_timer("integrate/i2");
         VoxelIndex local_voxel0_idx =
             getLocalFromGlobalVoxelIndex(global_voxel_indices[i],
                                          voxels_per_side_);
@@ -319,7 +312,7 @@ class TsdfIntegrator {
         VoxelIndex local_voxel3_idx =
             getLocalFromGlobalVoxelIndex(global_voxel_indices[i + 3],
                                          voxels_per_side_);
-        i2_timer.Stop();
+        //i2_timer.Stop();
 
         if (!block0 || block0_idx != last_block_idx) {
           block0 = layer_->allocateBlockPtrByIndex(block0_idx);
@@ -357,7 +350,7 @@ class TsdfIntegrator {
           block3->updated() = true;
         }
 
-        timing::Timer i3_timer("integrate/i3");
+        //timing::Timer i3_timer("integrate/i3");
         const Point voxel0_center_G =
             block0->computeCoordinatesFromVoxelIndex(local_voxel0_idx);
         const Point voxel1_center_G =
@@ -366,14 +359,14 @@ class TsdfIntegrator {
             block2->computeCoordinatesFromVoxelIndex(local_voxel2_idx);
         const Point voxel3_center_G =
             block3->computeCoordinatesFromVoxelIndex(local_voxel3_idx);
-        i3_timer.Stop();
+        //i3_timer.Stop();
 
-        timing::Timer i4_timer("integrate/i4");
+        //timing::Timer i4_timer("integrate/i4");
         TsdfVoxel& tsdf_voxel0 = block0->getVoxelByVoxelIndex(local_voxel0_idx);
         TsdfVoxel& tsdf_voxel1 = block1->getVoxelByVoxelIndex(local_voxel1_idx);
         TsdfVoxel& tsdf_voxel2 = block2->getVoxelByVoxelIndex(local_voxel2_idx);
         TsdfVoxel& tsdf_voxel3 = block3->getVoxelByVoxelIndex(local_voxel3_idx);
-        i4_timer.Stop();
+        //i4_timer.Stop();
 
         updateTsdfVoxelSse(voxel0_center_G, voxel1_center_G, voxel2_center_G,
                            voxel3_center_G, vec_origin, vec_v_point_origin, vec_dist_G,
