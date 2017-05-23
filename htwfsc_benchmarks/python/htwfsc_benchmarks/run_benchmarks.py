@@ -110,7 +110,7 @@ parsed = parser.parse_args()
 
 # Build, run the benchmarks and collect the results.
 assert(os.path.isdir(parsed.voxblox_workspace))
-#helpers.RunAllBenchmarksOfPackage(parsed.voxblox_workspace, "htwfsc_benchmarks")
+helpers.RunAllBenchmarksOfPackage(parsed.voxblox_workspace, "htwfsc_benchmarks")
 benchmark_files = helpers.GetAllBenchmarkingResultsOfPackage(
     parsed.voxblox_workspace, "htwfsc_benchmarks")
 
