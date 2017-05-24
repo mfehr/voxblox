@@ -132,6 +132,9 @@ class TsdfIntegrator {
   void integratePointCloud(const Transformation& T_G_C,
                            const Pointcloud& points_C, const Colors& colors) {
     DCHECK_EQ(points_C.size(), colors.size());
+
+    timing::Timing::Reset();
+
     timing::Timer integrate_timer("integrate");
 
     const Point& origin = T_G_C.getPosition();
@@ -172,6 +175,7 @@ class TsdfIntegrator {
       Block<TsdfVoxel>::Ptr block;
 
       for (const AnyIndex& global_voxel_idx : global_voxel_indices) {
+        timing::Timer index1_timer("integrate/index1");
         BlockIndex block_idx = getBlockIndexFromGlobalVoxelIndex(
             global_voxel_idx, voxels_per_side_inv_);
         VoxelIndex local_voxel_idx =
@@ -186,25 +190,35 @@ class TsdfIntegrator {
         if (local_voxel_idx.z() < 0) {
           local_voxel_idx.z() += voxels_per_side_;
         }
+        index1_timer.Stop();
 
+        timing::Timer allocate_timer("integrate/allocate");
         if (!block || block_idx != last_block_idx) {
           block = layer_->allocateBlockPtrByIndex(block_idx);
           block->updated() = true;
           last_block_idx = block_idx;
         }
+        allocate_timer.Stop();
 
+        timing::Timer index2_timer("integrate/index2");
         const Point voxel_center_G =
             block->computeCoordinatesFromVoxelIndex(local_voxel_idx);
         TsdfVoxel& tsdf_voxel = block->getVoxelByVoxelIndex(local_voxel_idx);
 
         const float weight =
             getVoxelWeight(point_C, point_G, origin, voxel_center_G);
+        index2_timer.Stop();
+
+        timing::Timer update_timer("integrate/update");
         updateTsdfVoxel(origin, point_C, point_G, voxel_center_G, color,
                         truncation_distance, weight, &tsdf_voxel);
+        update_timer.Stop();
       }
       update_voxels_timer.Stop();
     }
     integrate_timer.Stop();
+
+    LOG(INFO) << timing::Timing::Print();
   }
 
   inline void bundleRays(
