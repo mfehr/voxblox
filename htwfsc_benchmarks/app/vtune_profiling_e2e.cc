@@ -77,8 +77,9 @@ int main(int argc, char** argv) {
   FLAGS_alsologtostderr = 1;
 
   E2EBenchmarkFixture fixture;
+  const size_t radius = fixture.kRadius;
   fixture.SetUp();
-  fixture.CreateSphere(fixture.kRadius, fixture.kNumPoints);
+  fixture.CreateSphere(radius, fixture.kNumPoints);
 
   LOG(WARNING) << "Running baseline impl: " << FLAGS_use_baseline;
   if (FLAGS_use_baseline) {
