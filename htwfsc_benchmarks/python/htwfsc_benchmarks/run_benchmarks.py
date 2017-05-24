@@ -35,6 +35,7 @@ def GeneratePerformancePlotOverParameters(benchmark_context, benchmark_data):
     print "WARNING: Benchmarking was run on a non release build."
 
   figures_dict = dict()
+  figures_runtime_dict = dict()
 
   # Plot stuff.
   rcParams['font.family'] = 'sans-serif'
@@ -55,13 +56,21 @@ def GeneratePerformancePlotOverParameters(benchmark_context, benchmark_data):
       figures_dict[split_case_name[0]] = fig
     else:
       fig = figures_dict[split_case_name[0]] 
-      print fig
+
+    if split_case_name[0] not in figures_runtime_dict:
+      print 'Creating runtime figure for ' + split_case_name[0]
+      figr, axr = plt.subplots()
+      figures_runtime_dict[split_case_name[0]] = figr
+    else:
+      figr = figures_runtime_dict[split_case_name[0]] 
 
     ax = fig.gca();
+    axr = figr.gca();
 
     print 'Benchmarking case: ' + split_case_name[0] + ', version: ' + split_case_name[1]
     parameters = list()
-    cycles = list()
+    yvalues = list()
+    runtime = list()
     for item in case_results:
       if "radius_cm" in item:
         # Radii were multiplied by 10 to avoid casting the value to int
@@ -76,11 +85,14 @@ def GeneratePerformancePlotOverParameters(benchmark_context, benchmark_data):
 
       runtime_seconds = item["cpu_time"] * \
           helpers.UnitToScaler(item["time_unit"])
-      cycl = runtime_seconds * benchmark_context["mhz_per_cpu"] * 1e6
+      cycles = runtime_seconds * benchmark_context["mhz_per_cpu"] * 1e6
       flops = item["flops"] 
-      cycles.append(float(flops) / cycl)
-    ax.plot(parameters, cycles, marker='o', markeredgecolor='none',
+      yvalues.append(float(flops) / cycles)
+      runtime.append(cycles)
+    ax.plot(parameters, yvalues, marker='o', markeredgecolor='none',
                color=colors[split_case_name[1]], linewidth=2, markersize=6, label=case_name)
+    axr.plot(parameters, runtime, marker='o', markeredgecolor='none',
+                color=colors[split_case_name[1]], linewidth=2, markersize=6, label=case_name)
     idx += 1
 
     ax.set_facecolor('#E2E2E2')
@@ -92,11 +104,17 @@ def GeneratePerformancePlotOverParameters(benchmark_context, benchmark_data):
     ax.set_ylabel('Performance [flops/cycles]')
     ax.legend(loc=0)
 
+    axr.set_facecolor('#E2E2E2')
+    axr.yaxis.grid(True, linestyle='-', color='white')
+    title = 'Runtime for ' + benchmark_name
+    axr.set_title(title)
+    axr.set_xlabel(xlabel)
+    axr.set_ylabel('Runtime [cycles]')
+    axr.legend(loc=0)
+
   return figures_dict.items()
 
 # Generate a plot for each benchmark task within this report.
-
-
 def GeneratePlotsForBenchmarkFile(filename):
   print 'Generating plots for benchmark file: ' + filename
   json_data = LoadGoogleBenchmarkJsonReportResults(filename)

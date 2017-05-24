@@ -70,7 +70,7 @@ BENCHMARK_DEFINE_F(CastRayBenchmark, Radius_Baseline)
   }
 }
 BENCHMARK_REGISTER_F(CastRayBenchmark, Radius_Baseline)
-    ->DenseRange(1, 15, 1);
+    ->DenseRange(1, 3, 1);
 
 BENCHMARK_DEFINE_F(CastRayBenchmark, Radius_Fast)(benchmark::State& state) {
   const double radius = static_cast<double>(state.range(0)) / 2.0;
@@ -95,7 +95,7 @@ BENCHMARK_DEFINE_F(CastRayBenchmark, Radius_Fast)(benchmark::State& state) {
     }
   }
 }
-BENCHMARK_REGISTER_F(CastRayBenchmark, Radius_Fast)->DenseRange(1, 15, 1);
+BENCHMARK_REGISTER_F(CastRayBenchmark, Radius_Fast)->DenseRange(1, 3, 1);
 
 //////////////////////////////////////////////////////////////
 // BENCHMARK CONSTANT RADIUS WITH CHANGING NUMBER OF POINTS //
@@ -127,7 +127,7 @@ BENCHMARK_DEFINE_F(CastRayBenchmark, NumPoints_Baseline)
 }
 BENCHMARK_REGISTER_F(CastRayBenchmark, NumPoints_Baseline)
     ->RangeMultiplier(2)
-    ->Range(1, 1e6);
+    ->Range(1, 2);
 
 BENCHMARK_DEFINE_F(CastRayBenchmark, NumPoints_Fast)(benchmark::State& state) {
   const size_t num_points = static_cast<size_t>(state.range(0));
@@ -154,6 +154,6 @@ BENCHMARK_DEFINE_F(CastRayBenchmark, NumPoints_Fast)(benchmark::State& state) {
 }
 BENCHMARK_REGISTER_F(CastRayBenchmark, NumPoints_Fast)
     ->RangeMultiplier(2)
-    ->Range(1, 1e6);
+    ->Range(1, 2);
 
 BENCHMARKING_ENTRY_POINT
