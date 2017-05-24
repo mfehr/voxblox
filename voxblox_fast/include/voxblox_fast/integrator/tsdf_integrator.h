@@ -8,6 +8,8 @@
 #include <thread>
 #include <utility>
 
+#include <xmmintrin.h>
+
 #include <Eigen/Core>
 #include <glog/logging.h>
 
@@ -74,8 +76,27 @@ class TsdfIntegrator {
     return 0.0;
   }
 
-  inline void updateTsdfVoxel(const Point& origin, const Point& point_C,
-                              const Point& point_G, const Point& voxel_center,
+  inline float getVoxelWeight(const Point& point_C) const {
+    if (config_.use_const_weight) {
+      return 1.0;
+    }
+    FloatingPoint dist_z = std::abs(point_C.z());
+    if (dist_z > 1e-6) {
+      return 1.0 / (dist_z * dist_z);
+    }
+    return 0.0;
+  }
+
+  inline void dotProduct(const __m128 x, const __m128 y, float* val) {
+    __m128 xy = _mm_mul_ps(x, y);
+    __m128 hadd_xy = _mm_hadd_ps(xy, xy);
+    __m128 dotproduct = _mm_hadd_ps(hadd_xy, hadd_xy);
+
+    _mm_store_ss(val, dotproduct);
+  }
+
+  inline void updateTsdfVoxel(const __m128 origin,
+                              const __m128 point_G, const __m128 voxel_center,
                               const Color& color,
                               const float truncation_distance,
                               const float weight, TsdfVoxel* tsdf_voxel) const {
@@ -83,14 +104,19 @@ class TsdfIntegrator {
     // To do this, project the voxel_center onto the ray from origin to point G.
     // Then check if the the magnitude of the vector is smaller or greater than
     // the original distance...
-    Point v_voxel_origin = voxel_center - origin;
-    Point v_point_origin = point_G - origin;
+    __m128 v_voxel_origin = _mm_sub_ps(voxel_center, origin);
+    __m128 v_point_origin = _mm_sub_ps(point_G, origin);
 
-    FloatingPoint dist_G = v_point_origin.norm();
+    float norm_sq;
+    dotProduct(v_point_origin, v_point_origin, &norm_sq);
+    const FloatingPoint dist_G = sqrt(norm_sq);
+
     // projection of a (v_voxel_origin) onto b (v_point_origin)
-    FloatingPoint dist_G_V = v_voxel_origin.dot(v_point_origin) / dist_G;
+    float dot;
+    dotProduct(v_voxel_origin, v_point_origin, &dot);
+    FloatingPoint dist_G_V = dot / dist_G;
 
-    float sdf = static_cast<float>(dist_G - dist_G_V);
+    float sdf = dist_G - dist_G_V;
 
     float updated_weight = weight;
     // Compute updated weight in case we use weight dropoff. It's easier here
@@ -99,7 +125,7 @@ class TsdfIntegrator {
     const FloatingPoint dropoff_epsilon = voxel_size_;
     if (config_.use_weight_dropoff && sdf < -dropoff_epsilon) {
       updated_weight = weight * (truncation_distance + sdf) /
-                       (truncation_distance - dropoff_epsilon);
+          (truncation_distance - dropoff_epsilon);
       updated_weight = std::max(updated_weight, 0.0f);
     }
 
@@ -111,8 +137,8 @@ class TsdfIntegrator {
         new_weight;
 
     tsdf_voxel->distance = (new_sdf > 0.0)
-                               ? std::min(truncation_distance, new_sdf)
-                               : std::max(-truncation_distance, new_sdf);
+                                      ? std::min(truncation_distance, new_sdf)
+    : std::max(-truncation_distance, new_sdf);
     tsdf_voxel->weight = std::min(config_.max_weight, new_weight);
   }
 
@@ -129,6 +155,17 @@ class TsdfIntegrator {
     return sdf;
   }
 
+  typedef union { __m128 v; float a[4]; } uf;
+  void printVec4(__m128 v, char const * name) {
+    uf u;
+    u.v = v;
+    printf("Vector %s: [ %f\t%f\t%f\t%f ]\n", name, u.a[0], u.a[1], u.a[2], u.a[3]);
+  }
+
+  inline __m128 loadPointToSse(const Point& value) {
+    return _mm_load_ps(value.data());
+  }
+
   void integratePointCloud(const Transformation& T_G_C,
                            const Pointcloud& points_C, const Colors& colors) {
     DCHECK_EQ(points_C.size(), colors.size());
@@ -141,7 +178,7 @@ class TsdfIntegrator {
       const Point point_G = T_G_C * point_C;
       const Color& color = colors[pt_idx];
 
-      FloatingPoint ray_distance = (point_G - origin).norm();
+      const FloatingPoint ray_distance = (point_G - origin).norm();
       if (ray_distance < config_.min_ray_length_m) {
         continue;
       } else if (ray_distance > config_.max_ray_length_m) {
@@ -149,7 +186,7 @@ class TsdfIntegrator {
         continue;
       }
 
-      FloatingPoint truncation_distance = config_.default_truncation_distance;
+      const FloatingPoint truncation_distance = config_.default_truncation_distance;
 
       const Ray unit_ray = (point_G - origin).normalized();
 
@@ -166,10 +203,15 @@ class TsdfIntegrator {
       castRay(start_scaled, end_scaled, &global_voxel_indices);
       cast_ray_timer.Stop();
 
+      const float weight = getVoxelWeight(point_C);
+
       timing::Timer update_voxels_timer("integrate/update_voxels");
 
       BlockIndex last_block_idx = BlockIndex::Zero();
       Block<TsdfVoxel>::Ptr block;
+
+      __m128 origin_vec = loadPointToSse(origin);
+      __m128 point_G_vec = loadPointToSse(point_G);
 
       for (const AnyIndex& global_voxel_idx : global_voxel_indices) {
         BlockIndex block_idx = getBlockIndexFromGlobalVoxelIndex(
@@ -197,9 +239,10 @@ class TsdfIntegrator {
             block->computeCoordinatesFromVoxelIndex(local_voxel_idx);
         TsdfVoxel& tsdf_voxel = block->getVoxelByVoxelIndex(local_voxel_idx);
 
-        const float weight =
-            getVoxelWeight(point_C, point_G, origin, voxel_center_G);
-        updateTsdfVoxel(origin, point_C, point_G, voxel_center_G, color,
+
+        __m128 voxel_center_G_vec = loadPointToSse(voxel_center_G);
+
+        updateTsdfVoxel(origin_vec, point_G_vec, voxel_center_G_vec, color,
                         truncation_distance, weight, &tsdf_voxel);
       }
       update_voxels_timer.Stop();
@@ -251,10 +294,11 @@ class TsdfIntegrator {
     TsdfVoxel& tsdf_voxel =
         block->getVoxelByVoxelIndex(voxel_info.local_voxel_idx);
 
-    updateTsdfVoxel(origin, voxel_info.point_C, voxel_info.point_G,
-                    voxel_center_G, voxel_info.voxel.color,
-                    config_.default_truncation_distance,
-                    voxel_info.voxel.weight, &tsdf_voxel);
+    LOG(FATAL) << "Not implemented.";
+//    updateTsdfVoxel(origin, voxel_info.point_C, voxel_info.point_G,
+//                    voxel_center_G, voxel_info.voxel.color,
+//                    config_.default_truncation_distance,
+//                    voxel_info.voxel.weight, &tsdf_voxel);
   }
 
   void integrateVoxel(
