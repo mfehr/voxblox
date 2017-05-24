@@ -139,19 +139,24 @@ BENCHMARK_DEFINE_F(E2EBenchmark, Radius_Baseline)(benchmark::State& state) {
            countflops.updatetsdf_divs + countflops.updatetsdf_sqrts;
   state.counters["flops"] = flops;
 #endif
+
+  // NOTE(mfehr): Either preallocate here and reuse the same blocks everytime we
+  // iterate below, or completely deallocate and allocate in for every
+  // iteration.
+  AllocateBlocksInIndexRange(min_idx, max_idx, baseline_layer_.get());
+
   while (state.KeepRunning()) {
-    state.PauseTiming();
-    baseline_layer_->removeAllBlocks();
-    AllocateBlocksInIndexRange(min_idx, max_idx, baseline_layer_.get());
-    // Make sure all memory operations are finished.
-    benchmark::ClobberMemory();
-    state.ResumeTiming();
+    // state.PauseTiming();
+    // baseline_layer_->removeAllBlocks();
+    // AllocateBlocksInIndexRange(min_idx, max_idx, baseline_layer_.get());
+    // // Make sure all memory operations are finished.
+    // benchmark::ClobberMemory();
+    // state.ResumeTiming();
 
     baseline_integrator_->integratePointCloud(T_G_C, sphere_points_C, colors_);
   }
 }
 BENCHMARK_REGISTER_F(E2EBenchmark, Radius_Baseline)->DenseRange(1, 4, 1);
-
 
 BENCHMARK_DEFINE_F(E2EBenchmark, Radius_Fast)(benchmark::State& state) {
   const double radius = static_cast<double>(state.range(0)) / 2.0;
@@ -177,19 +182,24 @@ BENCHMARK_DEFINE_F(E2EBenchmark, Radius_Fast)(benchmark::State& state) {
            countflops.updatetsdf_divs + countflops.updatetsdf_sqrts;
   state.counters["flops"] = flops;
 #endif
+
+  // NOTE(mfehr): Either preallocate here and reuse the same blocks everytime we
+  // iterate below, or completely deallocate and allocate in for every
+  // iteration.
+  AllocateBlocksInIndexRange(min_idx, max_idx, fast_layer_.get());
+
   while (state.KeepRunning()) {
-    state.PauseTiming();
-    fast_layer_->removeAllBlocks();
-    AllocateBlocksInIndexRange(min_idx, max_idx, fast_layer_.get());
-    // Make sure all memory operations are finished.
-    benchmark::ClobberMemory();
-    state.ResumeTiming();
+    // state.PauseTiming();
+    // fast_layer_->removeAllBlocks();
+    // AllocateBlocksInIndexRange(min_idx, max_idx, fast_layer_.get());
+    // // Make sure all memory operations are finished.
+    // benchmark::ClobberMemory();
+    // state.ResumeTiming();
 
     fast_integrator_->integratePointCloud(T_G_C, sphere_points_C, fast_colors_);
   }
 }
 BENCHMARK_REGISTER_F(E2EBenchmark, Radius_Fast)->DenseRange(1, 4, 1);
-
 
 //////////////////////////////////////////////////////////////
 // BENCHMARK CONSTANT RADIUS WITH CHANGING NUMBER OF POINTS //
@@ -215,13 +225,19 @@ BENCHMARK_DEFINE_F(E2EBenchmark, NumPoints_Baseline)
            countflops.updatetsdf_divs + countflops.updatetsdf_sqrts;
   state.counters["flops"] = flops;
 #endif
+
+  // NOTE(mfehr): Either preallocate here and reuse the same blocks everytime we
+  // iterate below, or completely deallocate and allocate in for every
+  // iteration.
+  AllocateBlocksInIndexRange(kMinIdx, kMaxIdx, baseline_layer_.get());
+
   while (state.KeepRunning()) {
-    state.PauseTiming();
-    baseline_layer_->removeAllBlocks();
-    AllocateBlocksInIndexRange(kMinIdx, kMaxIdx, baseline_layer_.get());
-    // Make sure all memory operations are finished.
-    benchmark::ClobberMemory();
-    state.ResumeTiming();
+    // state.PauseTiming();
+    // baseline_layer_->removeAllBlocks();
+    // AllocateBlocksInIndexRange(kMinIdx, kMaxIdx, baseline_layer_.get());
+    // // Make sure all memory operations are finished.
+    // benchmark::ClobberMemory();
+    // state.ResumeTiming();
 
     baseline_integrator_->integratePointCloud(T_G_C, sphere_points_C, colors_);
   }
@@ -249,13 +265,19 @@ BENCHMARK_DEFINE_F(E2EBenchmark, NumPoints_Fast)(benchmark::State& state) {
            countflops.updatetsdf_divs + countflops.updatetsdf_sqrts;
   state.counters["flops"] = flops;
 #endif
+
+  // NOTE(mfehr): Either preallocate here and reuse the same blocks everytime we
+  // iterate below, or completely deallocate and allocate in for every
+  // iteration.
+  AllocateBlocksInIndexRange(kMinIdx, kMaxIdx, fast_layer_.get());
+
   while (state.KeepRunning()) {
-    state.PauseTiming();
-    fast_layer_->removeAllBlocks();
-    AllocateBlocksInIndexRange(kMinIdx, kMaxIdx, fast_layer_.get());
-    // Make sure all memory operations are finished.
-    benchmark::ClobberMemory();
-    state.ResumeTiming();
+    // state.PauseTiming();
+    // fast_layer_->removeAllBlocks();
+    // AllocateBlocksInIndexRange(kMinIdx, kMaxIdx, fast_layer_.get());
+    // // Make sure all memory operations are finished.
+    // benchmark::ClobberMemory();
+    // state.ResumeTiming();
 
     fast_integrator_->integratePointCloud(T_G_C, sphere_points_C, fast_colors_);
   }
