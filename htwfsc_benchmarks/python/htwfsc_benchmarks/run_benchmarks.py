@@ -34,47 +34,71 @@ def GeneratePerformancePlotOverParameters(benchmark_context, benchmark_data):
   if benchmark_context["library_build_type"] != "release":
     print "WARNING: Benchmarking was run on a non release build."
 
-  fig = plt.figure()
-  ax = fig.add_subplot(1, 1, 1)
+  figures_dict = dict()
 
   # Plot stuff.
   rcParams['font.family'] = 'sans-serif'
   rcParams['font.sans-serif'] = ['Gill Sans MT']
 
-  colors = ['#284910', '#C51929', '#ECC351']
-  idx = 0
+  colors = {'Baseline': '#284910', 'Fast': '#C51929', 'Other': '#ECC351'}
+
   for case_results in benchmark_data:
+    idx = 0
     case_name = str.split(str(case_results[0]["name"]), '/')[1]
+    split_case_name = str.split(case_name, '_')
+    if len(split_case_name) > 2:
+      exit("Your case name is wrong. It should have 2 parts separated by _")
+
+    if split_case_name[0] not in figures_dict:
+      print 'Creating figure for ' + split_case_name[0]
+      fig, ax = plt.subplots()
+      figures_dict[split_case_name[0]] = fig
+    else:
+      fig = figures_dict[split_case_name[0]] 
+      print fig
+
+    ax = fig.gca();
+
+    print 'Benchmarking case: ' + split_case_name[0] + ', version: ' + split_case_name[1]
     parameters = list()
     cycles = list()
     for item in case_results:
-      # Radii were multiplied by 10 to avoid casting the value to int
-      # while storing as JSON. Check and fix.
-      parameters.append(item["radius_cm"] / 100.0)
+      if "radius_cm" in item:
+        # Radii were multiplied by 10 to avoid casting the value to int
+        # while storing as JSON. Check and fix.
+        parameters.append(item["radius_cm"] / 100.0)
+        xlabel = 'Radius [m]'
+      elif "num_points" in item:
+        parameters.append(item["num_points"])
+        xlabel = 'Number of points'
+      else:
+        sys.exit("No x-value in benchmarking file. Use either radius_cm or num_points!")
+
       runtime_seconds = item["cpu_time"] * \
           helpers.UnitToScaler(item["time_unit"])
       cycl = runtime_seconds * benchmark_context["mhz_per_cpu"] * 1e6
-      flops = item["updatetsdf-flops"] + item["castray-flops"]
+      flops = item["flops"] 
       cycles.append(float(flops) / cycl)
-    plt.plot(parameters, cycles, marker='o', markeredgecolor='none',
-             color=colors[idx], linewidth=2, markersize=6, label=case_name)
+    ax.plot(parameters, cycles, marker='o', markeredgecolor='none',
+               color=colors[split_case_name[1]], linewidth=2, markersize=6, label=case_name)
     idx += 1
 
-  ax.set_xlabel('radius [m]')
-  ax.set_ylabel('Performance [flops/cycles]')
-  ax.set_axis_bgcolor('#E2E2E2')
-  ax.yaxis.grid(True, linestyle='-', color='white')
-  plt.legend(loc=0)
+    ax.set_facecolor('#E2E2E2')
+    ax.yaxis.grid(True, linestyle='-', color='white')
+    benchmark_name = str.split(str(benchmark_data[0][0]["name"]), '/')[0]
+    title = 'Performance for ' + benchmark_name
+    ax.set_title(title)
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel('Performance [flops/cycles]')
+    ax.legend(loc=0)
 
-  benchmark_name = str.split(str(benchmark_data[0][0]["name"]), '/')[0]
-  title = 'Performance for ' + benchmark_name
-  ax.set_title(title)
-  return fig
+  return figures_dict.items()
 
 # Generate a plot for each benchmark task within this report.
 
 
 def GeneratePlotsForBenchmarkFile(filename):
+  print 'Generating plots for benchmark file: ' + filename
   json_data = LoadGoogleBenchmarkJsonReportResults(filename)
   benchmark_context = json_data["context"]
 
