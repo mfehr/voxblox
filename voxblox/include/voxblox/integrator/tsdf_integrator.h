@@ -16,6 +16,10 @@
 #include "voxblox/integrator/integrator_utils.h"
 #include "voxblox/utils/timing.h"
 
+#ifdef COUNTFLOPS
+extern flopcounter countflops;
+#endif
+
 namespace voxblox {
 
 class TsdfIntegrator {
@@ -73,6 +77,173 @@ class TsdfIntegrator {
     }
     return 0.0;
   }
+
+#ifdef COUNTFLOPS
+//function copy for flop counting
+  inline void updateTsdfVoxel_flopcount(const Point& origin, const Point& point_C,
+                              const Point& point_G, const Point& voxel_center,
+                              const Color& color,
+                              const float truncation_distance,
+                              const float weight, TsdfVoxel* tsdf_voxel) {
+    // Figure out whether the voxel is behind or in front of the surface.
+    // To do this, project the voxel_center onto the ray from origin to point G.
+    // Then check if the the magnitude of the vector is smaller or greater than
+    // the original distance...
+    Point v_voxel_origin = voxel_center - origin;
+    Point v_point_origin = point_G - origin;
+
+#ifdef COUNTFLOPS
+    countflops.updatetsdf_adds += 6;
+#endif
+
+    FloatingPoint dist_G = v_point_origin.norm();
+
+#ifdef COUNTFLOPS
+    countflops.updatetsdf_adds += 2;
+    countflops.updatetsdf_muls += 3;
+    countflops.updatetsdf_sqrts += 1;
+#endif
+
+    // projection of a (v_voxel_origin) onto b (v_point_origin)
+    FloatingPoint dist_G_V = v_voxel_origin.dot(v_point_origin) / dist_G;
+
+#ifdef COUNTFLOPS
+    countflops.updatetsdf_adds += 2;
+    countflops.updatetsdf_muls += 3;
+    countflops.updatetsdf_divs += 1;
+#endif
+
+    float sdf = static_cast<float>(dist_G - dist_G_V);
+
+    float updated_weight = weight;
+    // Compute updated weight in case we use weight dropoff. It's easier here
+    // that in getVoxelWeight as here we have the actual SDF for the voxel
+    // already computed.
+    const FloatingPoint dropoff_epsilon = voxel_size_;
+    if (config_.use_weight_dropoff && sdf < -dropoff_epsilon) {
+      updated_weight = weight * (truncation_distance + sdf) /
+                       (truncation_distance - dropoff_epsilon);
+      updated_weight = std::max(updated_weight, 0.0f);
+
+        #ifdef COUNTFLOPS
+            countflops.updatetsdf_adds += 2;
+            countflops.updatetsdf_muls += 1;
+            countflops.updatetsdf_divs += 1;
+        #endif
+    }
+
+    const float new_weight = tsdf_voxel->weight + updated_weight;
+#ifdef COUNTFLOPS
+    countflops.updatetsdf_adds += 1;
+#endif
+
+    tsdf_voxel->color = Color::blendTwoColors(
+        tsdf_voxel->color, tsdf_voxel->weight, color, updated_weight);
+
+#ifdef COUNTFLOPS
+    countflops.updatetsdf_adds += 1;
+    countflops.updatetsdf_divs += 2;
+#endif
+
+    const float new_sdf =
+        (sdf * updated_weight + tsdf_voxel->distance * tsdf_voxel->weight) /
+        new_weight;
+
+#ifdef COUNTFLOPS
+    countflops.updatetsdf_adds += 1;
+    countflops.updatetsdf_muls += 2;
+    countflops.updatetsdf_divs += 1;
+#endif
+
+    tsdf_voxel->distance = (new_sdf > 0.0)
+                               ? std::min(truncation_distance, new_sdf)
+                               : std::max(-truncation_distance, new_sdf);
+    tsdf_voxel->weight = std::min(config_.max_weight, new_weight);
+
+#ifdef COUNTFLOPS
+    countflops.updatetsdf_runs += 1;
+#endif
+  }
+
+  void integratePointCloud_flopcount(const Transformation& T_G_C,
+                           const Pointcloud& points_C, const Colors& colors) {
+    DCHECK_EQ(points_C.size(), colors.size());
+    timing::Timer integrate_timer("integrate");
+
+    const Point& origin = T_G_C.getPosition();
+
+    for (size_t pt_idx = 0; pt_idx < points_C.size(); ++pt_idx) {
+      const Point& point_C = points_C[pt_idx];
+      const Point point_G = T_G_C * point_C;
+      const Color& color = colors[pt_idx];
+
+      FloatingPoint ray_distance = (point_G - origin).norm();
+      if (ray_distance < config_.min_ray_length_m) {
+        continue;
+      } else if (ray_distance > config_.max_ray_length_m) {
+        // TODO(helenol): clear until max ray length instead.
+        continue;
+      }
+
+      FloatingPoint truncation_distance = config_.default_truncation_distance;
+
+      const Ray unit_ray = (point_G - origin).normalized();
+
+      const Point ray_end = point_G + unit_ray * truncation_distance;
+      const Point ray_start = config_.voxel_carving_enabled
+                                  ? origin
+                                  : (point_G - unit_ray * truncation_distance);
+
+      const Point start_scaled = ray_start * voxel_size_inv_;
+      const Point end_scaled = ray_end * voxel_size_inv_;
+
+      IndexVector global_voxel_indices;
+      timing::Timer cast_ray_timer("integrate/cast_ray");
+      castRay_flopcount(start_scaled, end_scaled, &global_voxel_indices);
+      cast_ray_timer.Stop();
+
+      timing::Timer update_voxels_timer("integrate/update_voxels");
+
+      BlockIndex last_block_idx = BlockIndex::Zero();
+      Block<TsdfVoxel>::Ptr block;
+
+      for (const AnyIndex& global_voxel_idx : global_voxel_indices) {
+        BlockIndex block_idx = getBlockIndexFromGlobalVoxelIndex(
+            global_voxel_idx, voxels_per_side_inv_);
+        VoxelIndex local_voxel_idx =
+            getLocalFromGlobalVoxelIndex(global_voxel_idx, voxels_per_side_);
+
+        if (local_voxel_idx.x() < 0) {
+          local_voxel_idx.x() += voxels_per_side_;
+        }
+        if (local_voxel_idx.y() < 0) {
+          local_voxel_idx.y() += voxels_per_side_;
+        }
+        if (local_voxel_idx.z() < 0) {
+          local_voxel_idx.z() += voxels_per_side_;
+        }
+
+        if (!block || block_idx != last_block_idx) {
+          block = layer_->allocateBlockPtrByIndex(block_idx);
+          block->updated() = true;
+          last_block_idx = block_idx;
+        }
+
+        const Point voxel_center_G =
+            block->computeCoordinatesFromVoxelIndex(local_voxel_idx);
+        TsdfVoxel& tsdf_voxel = block->getVoxelByVoxelIndex(local_voxel_idx);
+
+        const float weight =
+            getVoxelWeight(point_C, point_G, origin, voxel_center_G);
+        updateTsdfVoxel_flopcount(origin, point_C, point_G, voxel_center_G, color,
+                        truncation_distance, weight, &tsdf_voxel);
+      }
+      update_voxels_timer.Stop();
+    }
+    integrate_timer.Stop();
+  }
+
+#endif
 
   inline void updateTsdfVoxel(const Point& origin, const Point& point_C,
                               const Point& point_G, const Point& voxel_center,
