@@ -50,23 +50,24 @@ def GeneratePerformancePlotOverParameters(benchmark_context, benchmark_data):
     for item in case_results:
       # Radii were multiplied by 10 to avoid casting the value to int
       # while storing as JSON. Check and fix.
-      print item
-      parameters.append(item["num_points"]) # / 100.0)
+      parameters.append(item["radius_cm"] / 100.0)
       runtime_seconds = item["cpu_time"] * \
           helpers.UnitToScaler(item["time_unit"])
-      cycles.append(runtime_seconds * benchmark_context["mhz_per_cpu"] * 1e6)
+      cycl = runtime_seconds * benchmark_context["mhz_per_cpu"] * 1e6
+      flops = item["updatetsdf-flops"] + item["castray-flops"]
+      cycles.append(float(flops) / cycl)
     plt.plot(parameters, cycles, marker='o', markeredgecolor='none',
              color=colors[idx], linewidth=2, markersize=6, label=case_name)
     idx += 1
 
-  ax.set_xlabel('n')
-  ax.set_ylabel('Runtime [cycles]')
+  ax.set_xlabel('radius [m]')
+  ax.set_ylabel('Performance [flops/cycles]')
   ax.set_axis_bgcolor('#E2E2E2')
   ax.yaxis.grid(True, linestyle='-', color='white')
   plt.legend(loc=0)
 
   benchmark_name = str.split(str(benchmark_data[0][0]["name"]), '/')[0]
-  title = 'Runtime for ' + benchmark_name
+  title = 'Performance for ' + benchmark_name
   ax.set_title(title)
   return fig
 
