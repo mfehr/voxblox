@@ -61,20 +61,8 @@ class E2EBenchmark : public ::benchmark::Fixture {
   }
 
   template <typename LayerType>
-  void AllocateSetOfBlocks(const int min_idx, const int max_idx,
-                           LayerType* layer) {
-    const int num_blocks_per_side = std::abs(max_idx - min_idx);
-    const int num_blocks =
-        num_blocks_per_side * num_blocks_per_side * num_blocks_per_side;
-
-    std::cout << "Allocating " << num_blocks << " blocks." << std::endl;
-
-    voxblox::Block<voxblox::TsdfVoxel> block(kVoxelsPerSide, kVoxelSize,
-                                             voxblox::Point());
-    std::cout << "Total amount of memory: "
-              << ((num_blocks * block.getMemorySize()) / 1e6) << " MB"
-              << std::endl;
-
+  void AllocateBlocksInIndexRange(const int min_idx, const int max_idx,
+                                  LayerType* layer) {
     CHECK_NOTNULL(layer);
     for (int x = min_idx; x < max_idx; ++x) {
       for (int y = min_idx; y < max_idx; ++y) {
@@ -84,6 +72,13 @@ class E2EBenchmark : public ::benchmark::Fixture {
         }
       }
     }
+  }
+
+  int GetMemoryUsage(const int num_blocks) {
+    voxblox::Block<voxblox::TsdfVoxel> block(kVoxelsPerSide, kVoxelSize,
+                                             voxblox::Point());
+    const float memory_bytes = num_blocks * block.getMemorySize();
+    return memory_bytes;
   }
 
   voxblox::Colors colors_;
@@ -101,8 +96,11 @@ class E2EBenchmark : public ::benchmark::Fixture {
 
   // Params for the benchmarks with varying number of points.
   static constexpr double kRadius = 1.0;
-  static constexpr int kMinIdx = -(kRadius / (kVoxelsPerSide * kVoxelSize) + 2);
-  static constexpr int kMaxIdx = (kRadius / (kVoxelsPerSide * kVoxelSize) + 2);
+  static constexpr int kMinIdx = -(kRadius / (kVoxelsPerSide * kVoxelSize) + 1);
+  static constexpr int kMaxIdx = (kRadius / (kVoxelsPerSide * kVoxelSize) + 1);
+  static constexpr int kNumBlocksPerSide = std::abs(kMinIdx - kMaxIdx);
+  static constexpr int kNumBlocks =
+      kNumBlocksPerSide * kNumBlocksPerSide * kNumBlocksPerSide;
 
   voxblox::TsdfIntegrator::Config config_;
   voxblox_fast::TsdfIntegrator::Config fast_config_;
@@ -119,11 +117,19 @@ class E2EBenchmark : public ::benchmark::Fixture {
 //////////////////////////////////////////////////////////////
 
 BENCHMARK_DEFINE_F(E2EBenchmark, Radius_Baseline)(benchmark::State& state) {
-  std::cout << "Radius_Baseline" << std::endl;
-
   const double radius = static_cast<double>(state.range(0)) / 2.0;
   state.counters["radius_cm"] = radius * 100;
   CreateSphere(radius, kNumPoints);
+
+  // Compute the amount of memory/blocks needed for the computation.
+  const int min_idx = -(radius / (kVoxelsPerSide * kVoxelSize) + 1);
+  const int max_idx = (radius / (kVoxelsPerSide * kVoxelSize) + 1);
+  const int num_blocks_per_side = std::abs(max_idx - min_idx);
+  const int num_blocks =
+      num_blocks_per_side * num_blocks_per_side * num_blocks_per_side;
+  state.counters["preallocated_memory_B"] = GetMemoryUsage(num_blocks);
+  state.counters["preallocated_blocks"] = num_blocks;
+
 #ifdef COUNTFLOPS
   countflops.ResetCastRay();
   countflops.ResetUpdateTsdf();
@@ -137,21 +143,30 @@ BENCHMARK_DEFINE_F(E2EBenchmark, Radius_Baseline)(benchmark::State& state) {
   while (state.KeepRunning()) {
     state.PauseTiming();
     baseline_layer_->removeAllBlocks();
-    const int min_idx = -(radius / (kVoxelsPerSide * kVoxelSize) + 2);
-    const int max_idx = (radius / (kVoxelsPerSide * kVoxelSize) + 2);
-    AllocateSetOfBlocks(min_idx, max_idx, baseline_layer_.get());
+    AllocateBlocksInIndexRange(min_idx, max_idx, baseline_layer_.get());
+    // Make sure all memory operations are finished.
+    benchmark::ClobberMemory();
     state.ResumeTiming();
+
     baseline_integrator_->integratePointCloud(T_G_C, sphere_points_C, colors_);
   }
 }
 BENCHMARK_REGISTER_F(E2EBenchmark, Radius_Baseline)->DenseRange(1, 4, 1);
 
 BENCHMARK_DEFINE_F(E2EBenchmark, Radius_Fast)(benchmark::State& state) {
-  std::cout << "Radius_Fast" << std::endl;
-
   const double radius = static_cast<double>(state.range(0)) / 2.0;
   state.counters["radius_cm"] = radius * 100;
   CreateSphere(radius, kNumPoints);
+
+  // Compute the amount of memory/blocks needed for the computation.
+  const int min_idx = -(radius / (kVoxelsPerSide * kVoxelSize) + 1);
+  const int max_idx = (radius / (kVoxelsPerSide * kVoxelSize) + 1);
+  const int num_blocks_per_side = std::abs(max_idx - min_idx);
+  const int num_blocks =
+      num_blocks_per_side * num_blocks_per_side * num_blocks_per_side;
+  state.counters["preallocated_memory_B"] = GetMemoryUsage(num_blocks);
+  state.counters["preallocated_blocks"] = num_blocks;
+
 #ifdef COUNTFLOPS
   countflops.ResetCastRay();
   countflops.ResetUpdateTsdf();
@@ -165,10 +180,11 @@ BENCHMARK_DEFINE_F(E2EBenchmark, Radius_Fast)(benchmark::State& state) {
   while (state.KeepRunning()) {
     state.PauseTiming();
     fast_layer_->removeAllBlocks();
-    const int min_idx = -(radius / (kVoxelsPerSide * kVoxelSize) + 2);
-    const int max_idx = (radius / (kVoxelsPerSide * kVoxelSize) + 2);
-    AllocateSetOfBlocks(min_idx, max_idx, fast_layer_.get());
+    AllocateBlocksInIndexRange(min_idx, max_idx, fast_layer_.get());
+    // Make sure all memory operations are finished.
+    benchmark::ClobberMemory();
     state.ResumeTiming();
+
     fast_integrator_->integratePointCloud(T_G_C, sphere_points_C, fast_colors_);
   }
 }
@@ -180,11 +196,14 @@ BENCHMARK_REGISTER_F(E2EBenchmark, Radius_Fast)->DenseRange(1, 4, 1);
 
 BENCHMARK_DEFINE_F(E2EBenchmark, NumPoints_Baseline)
 (benchmark::State& state) {
-  std::cout << "NumPoints_Baseline" << std::endl;
-
   const size_t num_points = static_cast<double>(state.range(0));
   CreateSphere(kRadius, num_points);
   state.counters["num_points"] = sphere_points_C.size();
+
+  // Print the amount of memory/blocks needed for the computation.
+  state.counters["preallocated_memory_B"] = GetMemoryUsage(kNumBlocks);
+  state.counters["preallocated_blocks"] = kNumBlocks;
+
 #ifdef COUNTFLOPS
   countflops.ResetCastRay();
   countflops.ResetUpdateTsdf();
@@ -198,21 +217,27 @@ BENCHMARK_DEFINE_F(E2EBenchmark, NumPoints_Baseline)
   while (state.KeepRunning()) {
     state.PauseTiming();
     baseline_layer_->removeAllBlocks();
-    AllocateSetOfBlocks(kMinIdx, kMaxIdx, baseline_layer_.get());
+    AllocateBlocksInIndexRange(kMinIdx, kMaxIdx, baseline_layer_.get());
+    // Make sure all memory operations are finished.
+    benchmark::ClobberMemory();
     state.ResumeTiming();
+
     baseline_integrator_->integratePointCloud(T_G_C, sphere_points_C, colors_);
   }
 }
 BENCHMARK_REGISTER_F(E2EBenchmark, NumPoints_Baseline)
     ->RangeMultiplier(2)
-    ->Range(1, 1e4);
+    ->Range(16, 1e4);
 
 BENCHMARK_DEFINE_F(E2EBenchmark, NumPoints_Fast)(benchmark::State& state) {
-  std::cout << "NumPoints_Fast" << std::endl;
-
   const size_t num_points = static_cast<double>(state.range(0));
   CreateSphere(kRadius, num_points);
   state.counters["num_points"] = sphere_points_C.size();
+
+  // Print the amount of memory/blocks needed for the computation.
+  state.counters["preallocated_memory_B"] = GetMemoryUsage(kNumBlocks);
+  state.counters["preallocated_blocks"] = kNumBlocks;
+
 #ifdef COUNTFLOPS
   countflops.ResetCastRay();
   countflops.ResetUpdateTsdf();
@@ -226,13 +251,16 @@ BENCHMARK_DEFINE_F(E2EBenchmark, NumPoints_Fast)(benchmark::State& state) {
   while (state.KeepRunning()) {
     state.PauseTiming();
     fast_layer_->removeAllBlocks();
-    AllocateSetOfBlocks(kMinIdx, kMaxIdx, fast_layer_.get());
+    AllocateBlocksInIndexRange(kMinIdx, kMaxIdx, fast_layer_.get());
+    // Make sure all memory operations are finished.
+    benchmark::ClobberMemory();
     state.ResumeTiming();
+
     fast_integrator_->integratePointCloud(T_G_C, sphere_points_C, fast_colors_);
   }
 }
 BENCHMARK_REGISTER_F(E2EBenchmark, NumPoints_Fast)
     ->RangeMultiplier(2)
-    ->Range(1, 1e4);
+    ->Range(16, 1e4);
 
 BENCHMARKING_ENTRY_POINT
