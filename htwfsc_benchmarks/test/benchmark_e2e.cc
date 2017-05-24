@@ -31,7 +31,6 @@ class E2EBenchmark : public ::benchmark::Fixture {
         new voxblox::Layer<voxblox::TsdfVoxel>(kVoxelSize, kVoxelsPerSide));
     fast_layer_.reset(new voxblox_fast::Layer<voxblox_fast::TsdfVoxel>(
         kVoxelSize, kVoxelsPerSide));
-
     baseline_integrator_.reset(
         new voxblox::TsdfIntegrator(config_, baseline_layer_.get()));
     fast_integrator_.reset(
@@ -153,6 +152,7 @@ BENCHMARK_DEFINE_F(E2EBenchmark, Radius_Baseline)(benchmark::State& state) {
 }
 BENCHMARK_REGISTER_F(E2EBenchmark, Radius_Baseline)->DenseRange(1, 4, 1);
 
+
 BENCHMARK_DEFINE_F(E2EBenchmark, Radius_Fast)(benchmark::State& state) {
   const double radius = static_cast<double>(state.range(0)) / 2.0;
   state.counters["radius_cm"] = radius * 100;
@@ -189,6 +189,7 @@ BENCHMARK_DEFINE_F(E2EBenchmark, Radius_Fast)(benchmark::State& state) {
   }
 }
 BENCHMARK_REGISTER_F(E2EBenchmark, Radius_Fast)->DenseRange(1, 4, 1);
+
 
 //////////////////////////////////////////////////////////////
 // BENCHMARK CONSTANT RADIUS WITH CHANGING NUMBER OF POINTS //
