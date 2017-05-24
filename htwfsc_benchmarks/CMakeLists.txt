@@ -27,8 +27,11 @@ target_link_libraries(bm_cast_ray ${PROJECT_NAME})
 add_benchmark(bm_e2e test/benchmark_e2e.cc)
 target_link_libraries(bm_e2e ${PROJECT_NAME})
 
-#add_benchmark(bm_update_tsdf test/benchmark_update_tsdf.cc)
-#target_link_libraries(bm_update_tsdf ${PROJECT_NAME})
+add_benchmark(bm_update_tsdf test/benchmark_update_tsdf.cc)
+target_link_libraries(bm_update_tsdf ${PROJECT_NAME})
+
+add_benchmark(bm_blend_colors test/benchmark_blend_colors.cc)
+target_link_libraries(bm_blend_colors ${PROJECT_NAME})
 
 # #########
 # # TESTS #

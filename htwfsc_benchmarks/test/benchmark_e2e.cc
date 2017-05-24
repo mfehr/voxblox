@@ -142,8 +142,7 @@ BENCHMARK_DEFINE_F(E2EBenchmark, NumPoints_Baseline)
   }
 }
 BENCHMARK_REGISTER_F(E2EBenchmark, NumPoints_Baseline)
-    ->RangeMultiplier(2)
-    ->Range(1, 2);
+    ->RangeMultiplier(2)->Range(1, 1e4);
 
 BENCHMARK_DEFINE_F(E2EBenchmark, NumPoints_Fast)(benchmark::State& state) {
   const size_t num_points = static_cast<double>(state.range(0));
@@ -162,7 +161,6 @@ BENCHMARK_DEFINE_F(E2EBenchmark, NumPoints_Fast)(benchmark::State& state) {
   }
 }
 BENCHMARK_REGISTER_F(E2EBenchmark, NumPoints_Fast)
-    ->RangeMultiplier(2)
-    ->Range(1, 2);
+    ->RangeMultiplier(2)->Range(1, 1e4);
 
 BENCHMARKING_ENTRY_POINT
