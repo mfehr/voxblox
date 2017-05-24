@@ -201,7 +201,7 @@ class TsdfIntegrator {
                               const Point& voxel_center,
                               const Color& color,
                               const float truncation_distance,
-                              const float weight, TsdfVoxel* tsdf_voxel) {
+                              const float weight, TsdfVoxel* tsdf_voxel) const {
     // Figure out whether the voxel is behind or in front of the surface.
     // To do this, project the voxel_center onto the ray from origin to point G.
     // Then check if the the magnitude of the vector is smaller or greater than
