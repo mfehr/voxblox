@@ -149,32 +149,49 @@ class TsdfIntegrator {
     __m128 voxel_weights_scaled = _mm_div_ps(voxel_weights, new_weight);
     __m128 new_weights_scaled = _mm_div_ps(vec_weight, new_weight);
 
-    float voxel_weights_scaled_array[4];
-    _mm_store_ps(voxel_weights_scaled_array, voxel_weights_scaled);
+    __m128 mul1024 = _mm_set1_ps(1024.0);
+    __m128 w11 = _mm_mul_ps(voxel_weights_scaled, mul1024);
+    __m128 w22 = _mm_mul_ps(new_weights_scaled, mul1024);
+
+    __m128i w1i = _mm_cvtps_epi32(w11);
+    __m128i w2i = _mm_cvtps_epi32(w22);
+
+    /*float voxel_weights_scaled_array[4];
+    _mm_storeu_si128((__m128i*)voxel_weights_scaled_array, w1i);
     float new_weights_scaled_array[4];
-    _mm_store_ps(new_weights_scaled_array, new_weights_scaled);
+    _mm_storeu_si128((__m128i*)new_weights_scaled_array, w2i);*/
+
+    __m128i weight1_0 = _mm_shuffle_epi32(w1i, _MM_SHUFFLE(0,0,0,0));
+    __m128i weight1_1 = _mm_shuffle_epi32(w1i, _MM_SHUFFLE(1,1,1,1));
+    __m128i weight1_2 = _mm_shuffle_epi32(w1i, _MM_SHUFFLE(2,2,2,2));
+    __m128i weight1_3 = _mm_shuffle_epi32(w1i, _MM_SHUFFLE(3,3,3,3));
+
+    __m128i weight2_0 = _mm_shuffle_epi32(w2i, _MM_SHUFFLE(0,0,0,0));
+    __m128i weight2_1 = _mm_shuffle_epi32(w2i, _MM_SHUFFLE(1,1,1,1));
+    __m128i weight2_2 = _mm_shuffle_epi32(w2i, _MM_SHUFFLE(2,2,2,2));
+    __m128i weight2_3 = _mm_shuffle_epi32(w2i, _MM_SHUFFLE(3,3,3,3));
 
     Color::blendTwoColorsWithScaledWeights(
-        tsdf_voxel0->color, voxel_weights_scaled_array[0], color,
-        new_weights_scaled_array[0], &tsdf_voxel0->color);
+        tsdf_voxel0->color, weight1_0, color,
+        weight2_0, &tsdf_voxel0->color);
     tsdf_voxel0->distance = sdf_array[0];
     tsdf_voxel0->weight = weight_array[0];
 
     Color::blendTwoColorsWithScaledWeights(
-        tsdf_voxel1->color, voxel_weights_scaled_array[1], color,
-        new_weights_scaled_array[1], &tsdf_voxel1->color);
+        tsdf_voxel1->color, weight1_1, color,
+        weight2_1, &tsdf_voxel1->color);
     tsdf_voxel1->distance = sdf_array[1];
     tsdf_voxel1->weight = weight_array[1];
 
     Color::blendTwoColorsWithScaledWeights(
-        tsdf_voxel2->color, voxel_weights_scaled_array[2], color,
-        new_weights_scaled_array[2], &tsdf_voxel2->color);
+        tsdf_voxel2->color, weight1_2, color,
+        weight2_2, &tsdf_voxel2->color);
     tsdf_voxel2->distance = sdf_array[2];
     tsdf_voxel2->weight = weight_array[2];
 
     Color::blendTwoColorsWithScaledWeights(
-        tsdf_voxel3->color, voxel_weights_scaled_array[3], color,
-        new_weights_scaled_array[3], &tsdf_voxel3->color);
+        tsdf_voxel3->color, weight1_3, color,
+        weight2_2, &tsdf_voxel3->color);
     tsdf_voxel3->distance = sdf_array[3];
     tsdf_voxel3->weight = weight_array[3];
   }

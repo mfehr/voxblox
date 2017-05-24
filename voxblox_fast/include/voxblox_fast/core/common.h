@@ -152,31 +152,25 @@ struct Color {
   }
 
   static void blendTwoColorsWithScaledWeights(const Color& first_color,
-                                               FloatingPoint first_weight,
+                                              __m128i first_weight,
                                                const Color& second_color,
-                                               FloatingPoint second_weight,
+                                               __m128i second_weight,
                                                Color* new_color) {
     __m128i c1v = _mm_setr_epi32(first_color.rgba[0], first_color.rgba[1],
                                 first_color.rgba[2], first_color.rgba[3]);
     __m128i c2v = _mm_setr_epi32(second_color.rgba[0], second_color.rgba[1],
                                 second_color.rgba[2], second_color.rgba[3]);
 
-    __m128 c1fv = _mm_cvtepi32_ps(c1v);
-    __m128 c2fv = _mm_cvtepi32_ps(c2v);
+    //__m128 weight_1 = _mm_set1_epi32(first_weight);
+    //__m128 weight_2 = _mm_set1_epi32(second_weight);
 
-    __m128 weight_1 = _mm_set1_ps(first_weight);
-    __m128 color_1 = _mm_mul_ps(c1fv, weight_1);
+    __m128i color_1 = _mm_mullo_epi32(c1v, first_weight);
+    __m128i color_2 = _mm_mullo_epi32(c2v, second_weight);
 
-    __m128 weight_2 = _mm_set1_ps(second_weight);
-    __m128 color_2 = _mm_mul_ps(c2fv, weight_2);
+    __m128i color = _mm_add_epi32(color_1, color_2);
+    __m128i color_scaled = _mm_srli_epi32(color, 10);
 
-    __m128 color_new_vec = _mm_add_ps(color_1, color_2);
-    __m128i color_new_int = _mm_cvttps_epi32(color_new_vec);
-
-    /*int a[4];
-    _mm_maskstore_epi32(a, mask, color_new_int);*/
-
-    __m128i pack1 = _mm_packus_epi32 (color_new_int, color_new_int);
+    __m128i pack1 = _mm_packus_epi32 (color_scaled, color_scaled);
     __m128i pack2 = _mm_packus_epi16 (pack1, pack1);
 
     *(int*)new_color->rgba = _mm_extract_epi32(pack2, 0);
