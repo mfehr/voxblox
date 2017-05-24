@@ -5,8 +5,8 @@
 
 #include <glog/logging.h>
 
-#include "./Block.pb.h"
-#include "./Layer.pb.h"
+#include "./FastBlock.pb.h"
+#include "./FastLayer.pb.h"
 #include "voxblox_fast/core/common.h"
 #include "voxblox_fast/core/layer.h"
 #include "voxblox_fast/utils/protobuf_utils.h"

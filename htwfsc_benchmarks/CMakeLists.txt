@@ -12,6 +12,12 @@ cs_add_library(${PROJECT_NAME}
 )
 target_link_libraries(${PROJECT_NAME})
 
+#####################
+# APP FOR PROFILING #
+#####################
+cs_add_executable(vtune_profiling_e2e app/vtune_profiling_e2e.cc)
+target_link_libraries(vtune_profiling_e2e ${PROJECT_NAME})
+
 ##############
 # BENCHMARKS #
 ##############
@@ -21,8 +27,11 @@ target_link_libraries(${PROJECT_NAME})
 add_benchmark(bm_e2e test/benchmark_e2e.cc)
 target_link_libraries(bm_e2e ${PROJECT_NAME})
 
-#add_benchmark(bm_update_tsdf test/benchmark_update_tsdf.cc)
-#target_link_libraries(bm_update_tsdf ${PROJECT_NAME})
+add_benchmark(bm_update_tsdf test/benchmark_update_tsdf.cc)
+target_link_libraries(bm_update_tsdf ${PROJECT_NAME})
+
+add_benchmark(bm_blend_colors test/benchmark_blend_colors.cc)
+target_link_libraries(bm_blend_colors ${PROJECT_NAME})
 
 # #########
 # # TESTS #
