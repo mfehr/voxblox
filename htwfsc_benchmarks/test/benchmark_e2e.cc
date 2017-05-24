@@ -19,8 +19,10 @@ class E2EBenchmark : public ::benchmark::Fixture {
     config_.max_ray_length_m = 50.0;
     fast_config_.max_ray_length_m = 50.0;
 
-    baseline_layer_.reset(new voxblox::Layer<voxblox::TsdfVoxel>(kVoxelSize, kVoxelsPerSide));
-    fast_layer_.reset(new voxblox_fast::Layer<voxblox_fast::TsdfVoxel>(kVoxelSize, kVoxelsPerSide));
+    baseline_layer_.reset(
+        new voxblox::Layer<voxblox::TsdfVoxel>(kVoxelSize, kVoxelsPerSide));
+    fast_layer_.reset(new voxblox_fast::Layer<voxblox_fast::TsdfVoxel>(
+        kVoxelSize, kVoxelsPerSide));
     baseline_integrator_.reset(
         new voxblox::TsdfIntegrator(config_, baseline_layer_.get()));
     fast_integrator_.reset(
@@ -35,7 +37,8 @@ class E2EBenchmark : public ::benchmark::Fixture {
     colors_.clear();
     colors_.resize(sphere_points_C.size(), voxblox::Color(128, 255, 0));
     fast_colors_.clear();
-    fast_colors_.resize(sphere_points_C.size(), voxblox_fast::Color(128, 255, 0));
+    fast_colors_.resize(sphere_points_C.size(),
+                        voxblox_fast::Color(128, 255, 0));
   }
 
   void TearDown(const ::benchmark::State& /*state*/) {
@@ -46,6 +49,20 @@ class E2EBenchmark : public ::benchmark::Fixture {
 
     sphere_points_C.clear();
     colors_.clear();
+  }
+
+  template <typename LayerType>
+  void AllocateSetOfBlocks(const int min_idx, const int max_idx,
+                           LayerType* layer) {
+    CHECK_NOTNULL(layer);
+    for (int x = min_idx; x < max_idx; ++x) {
+      for (int y = min_idx; y < max_idx; ++y) {
+        for (int z = min_idx; z < max_idx; ++z) {
+          Eigen::Matrix<int, 3, 1> index = Eigen::Matrix<int, 3, 1>(x, y, z);
+          layer->allocateBlockPtrByIndex(index);
+        }
+      }
+    }
   }
 
   voxblox::Colors colors_;
@@ -60,6 +77,9 @@ class E2EBenchmark : public ::benchmark::Fixture {
   static constexpr double kSigma = 0.05;
   static constexpr size_t kNumPoints = 200u;
   static constexpr double kRadius = 2.0;
+
+  static constexpr int kMinIdx = -(kRadius / (kVoxelsPerSide * kVoxelSize) + 2);
+  static constexpr int kMaxIdx = (kRadius / (kVoxelsPerSide * kVoxelSize) + 2);
 
   voxblox::TsdfIntegrator::Config config_;
   voxblox_fast::TsdfIntegrator::Config fast_config_;
@@ -80,6 +100,10 @@ BENCHMARK_DEFINE_F(E2EBenchmark, BM_baseline_radius)(benchmark::State& state) {
   state.counters["radius_cm"] = radius * 100;
   CreateSphere(radius, kNumPoints);
   while (state.KeepRunning()) {
+    state.PauseTiming();
+    baseline_layer_->removeAllBlocks();
+    AllocateSetOfBlocks(kMinIdx, kMaxIdx, baseline_layer_.get());
+    state.ResumeTiming();
     baseline_integrator_->integratePointCloud(T_G_C, sphere_points_C, colors_);
   }
 }
@@ -90,6 +114,10 @@ BENCHMARK_DEFINE_F(E2EBenchmark, BM_fast_radius)(benchmark::State& state) {
   state.counters["radius_cm"] = radius * 100;
   CreateSphere(radius, kNumPoints);
   while (state.KeepRunning()) {
+    state.PauseTiming();
+    fast_layer_->removeAllBlocks();
+    AllocateSetOfBlocks(kMinIdx, kMaxIdx, fast_layer_.get());
+    state.ResumeTiming();
     fast_integrator_->integratePointCloud(T_G_C, sphere_points_C, fast_colors_);
   }
 }
@@ -105,6 +133,10 @@ BENCHMARK_DEFINE_F(E2EBenchmark, BM_baseline_num_points)
   CreateSphere(kRadius, num_points);
   state.counters["num_points"] = sphere_points_C.size();
   while (state.KeepRunning()) {
+    state.PauseTiming();
+    baseline_layer_->removeAllBlocks();
+    AllocateSetOfBlocks(kMinIdx, kMaxIdx, baseline_layer_.get());
+    state.ResumeTiming();
     baseline_integrator_->integratePointCloud(T_G_C, sphere_points_C, colors_);
   }
 }
@@ -117,6 +149,10 @@ BENCHMARK_DEFINE_F(E2EBenchmark, BM_fast_num_points)(benchmark::State& state) {
   CreateSphere(kRadius, num_points);
   state.counters["num_points"] = sphere_points_C.size();
   while (state.KeepRunning()) {
+    state.PauseTiming();
+    fast_layer_->removeAllBlocks();
+    AllocateSetOfBlocks(kMinIdx, kMaxIdx, fast_layer_.get());
+    state.ResumeTiming();
     fast_integrator_->integratePointCloud(T_G_C, sphere_points_C, fast_colors_);
   }
 }
