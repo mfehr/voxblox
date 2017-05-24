@@ -63,6 +63,18 @@ class E2EBenchmark : public ::benchmark::Fixture {
   template <typename LayerType>
   void AllocateSetOfBlocks(const int min_idx, const int max_idx,
                            LayerType* layer) {
+    const int num_blocks_per_side = std::abs(max_idx - min_idx);
+    const int num_blocks =
+        num_blocks_per_side * num_blocks_per_side * num_blocks_per_side;
+
+    std::cout << "Allocating " << num_blocks << " blocks." << std::endl;
+
+    voxblox::Block<voxblox::TsdfVoxel> block(kVoxelsPerSide, kVoxelSize,
+                                             voxblox::Point());
+    std::cout << "Total amount of memory: "
+              << ((num_blocks * block.getMemorySize()) / 1e6) << " MB"
+              << std::endl;
+
     CHECK_NOTNULL(layer);
     for (int x = min_idx; x < max_idx; ++x) {
       for (int y = min_idx; y < max_idx; ++y) {
@@ -81,12 +93,14 @@ class E2EBenchmark : public ::benchmark::Fixture {
 
   static constexpr double kVoxelSize = 0.01;
   static constexpr size_t kVoxelsPerSide = 16u;
-
   static constexpr double kMean = 0;
   static constexpr double kSigma = 0.05;
-  static constexpr size_t kNumPoints = 100000u;
-  static constexpr double kRadius = 2.0;
 
+  // Params for the benchmarks with varying radius.
+  static constexpr size_t kNumPoints = 1000u;
+
+  // Params for the benchmarks with varying number of points.
+  static constexpr double kRadius = 1.0;
   static constexpr int kMinIdx = -(kRadius / (kVoxelsPerSide * kVoxelSize) + 2);
   static constexpr int kMaxIdx = (kRadius / (kVoxelsPerSide * kVoxelSize) + 2);
 
@@ -105,6 +119,8 @@ class E2EBenchmark : public ::benchmark::Fixture {
 //////////////////////////////////////////////////////////////
 
 BENCHMARK_DEFINE_F(E2EBenchmark, Radius_Baseline)(benchmark::State& state) {
+  std::cout << "Radius_Baseline" << std::endl;
+
   const double radius = static_cast<double>(state.range(0)) / 2.0;
   state.counters["radius_cm"] = radius * 100;
   CreateSphere(radius, kNumPoints);
@@ -121,14 +137,18 @@ BENCHMARK_DEFINE_F(E2EBenchmark, Radius_Baseline)(benchmark::State& state) {
   while (state.KeepRunning()) {
     state.PauseTiming();
     baseline_layer_->removeAllBlocks();
-    AllocateSetOfBlocks(kMinIdx, kMaxIdx, baseline_layer_.get());
+    const int min_idx = -(radius / (kVoxelsPerSide * kVoxelSize) + 2);
+    const int max_idx = (radius / (kVoxelsPerSide * kVoxelSize) + 2);
+    AllocateSetOfBlocks(min_idx, max_idx, baseline_layer_.get());
     state.ResumeTiming();
     baseline_integrator_->integratePointCloud(T_G_C, sphere_points_C, colors_);
   }
 }
-BENCHMARK_REGISTER_F(E2EBenchmark, Radius_Baseline)->DenseRange(1, 3, 1);
+BENCHMARK_REGISTER_F(E2EBenchmark, Radius_Baseline)->DenseRange(1, 4, 1);
 
 BENCHMARK_DEFINE_F(E2EBenchmark, Radius_Fast)(benchmark::State& state) {
+  std::cout << "Radius_Fast" << std::endl;
+
   const double radius = static_cast<double>(state.range(0)) / 2.0;
   state.counters["radius_cm"] = radius * 100;
   CreateSphere(radius, kNumPoints);
@@ -145,12 +165,14 @@ BENCHMARK_DEFINE_F(E2EBenchmark, Radius_Fast)(benchmark::State& state) {
   while (state.KeepRunning()) {
     state.PauseTiming();
     fast_layer_->removeAllBlocks();
-    AllocateSetOfBlocks(kMinIdx, kMaxIdx, fast_layer_.get());
+    const int min_idx = -(radius / (kVoxelsPerSide * kVoxelSize) + 2);
+    const int max_idx = (radius / (kVoxelsPerSide * kVoxelSize) + 2);
+    AllocateSetOfBlocks(min_idx, max_idx, fast_layer_.get());
     state.ResumeTiming();
     fast_integrator_->integratePointCloud(T_G_C, sphere_points_C, fast_colors_);
   }
 }
-BENCHMARK_REGISTER_F(E2EBenchmark, Radius_Fast)->DenseRange(1, 3, 1);
+BENCHMARK_REGISTER_F(E2EBenchmark, Radius_Fast)->DenseRange(1, 4, 1);
 
 //////////////////////////////////////////////////////////////
 // BENCHMARK CONSTANT RADIUS WITH CHANGING NUMBER OF POINTS //
@@ -158,6 +180,8 @@ BENCHMARK_REGISTER_F(E2EBenchmark, Radius_Fast)->DenseRange(1, 3, 1);
 
 BENCHMARK_DEFINE_F(E2EBenchmark, NumPoints_Baseline)
 (benchmark::State& state) {
+  std::cout << "NumPoints_Baseline" << std::endl;
+
   const size_t num_points = static_cast<double>(state.range(0));
   CreateSphere(kRadius, num_points);
   state.counters["num_points"] = sphere_points_C.size();
@@ -184,6 +208,8 @@ BENCHMARK_REGISTER_F(E2EBenchmark, NumPoints_Baseline)
     ->Range(1, 1e4);
 
 BENCHMARK_DEFINE_F(E2EBenchmark, NumPoints_Fast)(benchmark::State& state) {
+  std::cout << "NumPoints_Fast" << std::endl;
+
   const size_t num_points = static_cast<double>(state.range(0));
   CreateSphere(kRadius, num_points);
   state.counters["num_points"] = sphere_points_C.size();
