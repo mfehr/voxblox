@@ -73,10 +73,10 @@ class E2EBenchmark : public ::benchmark::Fixture {
     }
   }
 
-  int GetMemoryUsage(const int num_blocks) {
+  size_t GetMemoryUsage(const int num_blocks) {
     voxblox::Block<voxblox::TsdfVoxel> block(kVoxelsPerSide, kVoxelSize,
                                              voxblox::Point());
-    const float memory_bytes = num_blocks * block.getMemorySize();
+    const size_t memory_bytes = num_blocks * block.getMemorySize();
     return memory_bytes;
   }
 
@@ -116,18 +116,25 @@ class E2EBenchmark : public ::benchmark::Fixture {
 //////////////////////////////////////////////////////////////
 
 BENCHMARK_DEFINE_F(E2EBenchmark, Radius_Baseline)(benchmark::State& state) {
-  const double radius = static_cast<double>(state.range(0)) / 2.0;
-  state.counters["radius_cm"] = radius * 100;
-  CreateSphere(radius, kNumPoints);
+  // Create test data.
+  const double radius_cm = static_cast<double>(state.range(0)) / 2.;
+  state.counters["radius_cm"] = radius_cm;
+  const double radius_m = radius_cm / 100;
+  CreateSphere(radius_m, kNumPoints);
 
   // Compute the amount of memory/blocks needed for the computation.
-  const int min_idx = -(radius / (kVoxelsPerSide * kVoxelSize) + 1);
-  const int max_idx = (radius / (kVoxelsPerSide * kVoxelSize) + 1);
+  const int min_idx = -(radius_m / (kVoxelsPerSide * kVoxelSize) + 1);
+  const int max_idx = (radius_m / (kVoxelsPerSide * kVoxelSize) + 1);
   const int num_blocks_per_side = std::abs(max_idx - min_idx);
   const int num_blocks =
       num_blocks_per_side * num_blocks_per_side * num_blocks_per_side;
   state.counters["preallocated_memory_B"] = GetMemoryUsage(num_blocks);
   state.counters["preallocated_blocks"] = num_blocks;
+
+  // NOTE(mfehr): Either preallocate here and reuse the same blocks everytime we
+  // iterate below, or completely deallocate and allocate in for every
+  // iteration.
+  AllocateBlocksInIndexRange(min_idx, max_idx, baseline_layer_.get());
 
 #ifdef COUNTFLOPS
   countflops.ResetCastRay();
@@ -139,11 +146,6 @@ BENCHMARK_DEFINE_F(E2EBenchmark, Radius_Baseline)(benchmark::State& state) {
            countflops.updatetsdf_divs + countflops.updatetsdf_sqrts;
   state.counters["flops"] = flops;
 #endif
-
-  // NOTE(mfehr): Either preallocate here and reuse the same blocks everytime we
-  // iterate below, or completely deallocate and allocate in for every
-  // iteration.
-  AllocateBlocksInIndexRange(min_idx, max_idx, baseline_layer_.get());
 
   while (state.KeepRunning()) {
     // state.PauseTiming();
@@ -156,21 +158,28 @@ BENCHMARK_DEFINE_F(E2EBenchmark, Radius_Baseline)(benchmark::State& state) {
     baseline_integrator_->integratePointCloud(T_G_C, sphere_points_C, colors_);
   }
 }
-BENCHMARK_REGISTER_F(E2EBenchmark, Radius_Baseline)->DenseRange(1, 4, 1);
+BENCHMARK_REGISTER_F(E2EBenchmark, Radius_Baseline)->DenseRange(100, 900, 50);
 
 BENCHMARK_DEFINE_F(E2EBenchmark, Radius_Fast)(benchmark::State& state) {
-  const double radius = static_cast<double>(state.range(0)) / 2.0;
-  state.counters["radius_cm"] = radius * 100;
-  CreateSphere(radius, kNumPoints);
+  // Create test data.
+  const double radius_cm = static_cast<double>(state.range(0)) / 2.;
+  state.counters["radius_cm"] = radius_cm;
+  const double radius_m = radius_cm / 100;
+  CreateSphere(radius_m, kNumPoints);
 
   // Compute the amount of memory/blocks needed for the computation.
-  const int min_idx = -(radius / (kVoxelsPerSide * kVoxelSize) + 1);
-  const int max_idx = (radius / (kVoxelsPerSide * kVoxelSize) + 1);
+  const int min_idx = -(radius_m / (kVoxelsPerSide * kVoxelSize) + 1);
+  const int max_idx = (radius_m / (kVoxelsPerSide * kVoxelSize) + 1);
   const int num_blocks_per_side = std::abs(max_idx - min_idx);
   const int num_blocks =
       num_blocks_per_side * num_blocks_per_side * num_blocks_per_side;
   state.counters["preallocated_memory_B"] = GetMemoryUsage(num_blocks);
   state.counters["preallocated_blocks"] = num_blocks;
+
+  // NOTE(mfehr): Either preallocate here and reuse the same blocks everytime we
+  // iterate below, or completely deallocate and allocate in for every
+  // iteration.
+  AllocateBlocksInIndexRange(min_idx, max_idx, fast_layer_.get());
 
 #ifdef COUNTFLOPS
   countflops.ResetCastRay();
@@ -183,11 +192,6 @@ BENCHMARK_DEFINE_F(E2EBenchmark, Radius_Fast)(benchmark::State& state) {
   state.counters["flops"] = flops;
 #endif
 
-  // NOTE(mfehr): Either preallocate here and reuse the same blocks everytime we
-  // iterate below, or completely deallocate and allocate in for every
-  // iteration.
-  AllocateBlocksInIndexRange(min_idx, max_idx, fast_layer_.get());
-
   while (state.KeepRunning()) {
     // state.PauseTiming();
     // fast_layer_->removeAllBlocks();
@@ -199,7 +203,7 @@ BENCHMARK_DEFINE_F(E2EBenchmark, Radius_Fast)(benchmark::State& state) {
     fast_integrator_->integratePointCloud(T_G_C, sphere_points_C, fast_colors_);
   }
 }
-BENCHMARK_REGISTER_F(E2EBenchmark, Radius_Fast)->DenseRange(1, 4, 1);
+BENCHMARK_REGISTER_F(E2EBenchmark, Radius_Fast)->DenseRange(100, 900, 50);
 
 //////////////////////////////////////////////////////////////
 // BENCHMARK CONSTANT RADIUS WITH CHANGING NUMBER OF POINTS //
@@ -215,6 +219,11 @@ BENCHMARK_DEFINE_F(E2EBenchmark, NumPoints_Baseline)
   state.counters["preallocated_memory_B"] = GetMemoryUsage(kNumBlocks);
   state.counters["preallocated_blocks"] = kNumBlocks;
 
+  // NOTE(mfehr): Either preallocate here and reuse the same blocks everytime we
+  // iterate below, or completely deallocate and allocate in for every
+  // iteration.
+  AllocateBlocksInIndexRange(kMinIdx, kMaxIdx, baseline_layer_.get());
+
 #ifdef COUNTFLOPS
   countflops.ResetCastRay();
   countflops.ResetUpdateTsdf();
@@ -225,11 +234,6 @@ BENCHMARK_DEFINE_F(E2EBenchmark, NumPoints_Baseline)
            countflops.updatetsdf_divs + countflops.updatetsdf_sqrts;
   state.counters["flops"] = flops;
 #endif
-
-  // NOTE(mfehr): Either preallocate here and reuse the same blocks everytime we
-  // iterate below, or completely deallocate and allocate in for every
-  // iteration.
-  AllocateBlocksInIndexRange(kMinIdx, kMaxIdx, baseline_layer_.get());
 
   while (state.KeepRunning()) {
     // state.PauseTiming();
@@ -244,7 +248,7 @@ BENCHMARK_DEFINE_F(E2EBenchmark, NumPoints_Baseline)
 }
 BENCHMARK_REGISTER_F(E2EBenchmark, NumPoints_Baseline)
     ->RangeMultiplier(2)
-    ->Range(16, 1e4);
+    ->Range(16, 1e7);
 
 BENCHMARK_DEFINE_F(E2EBenchmark, NumPoints_Fast)(benchmark::State& state) {
   const size_t num_points = static_cast<double>(state.range(0));
@@ -254,6 +258,11 @@ BENCHMARK_DEFINE_F(E2EBenchmark, NumPoints_Fast)(benchmark::State& state) {
   // Print the amount of memory/blocks needed for the computation.
   state.counters["preallocated_memory_B"] = GetMemoryUsage(kNumBlocks);
   state.counters["preallocated_blocks"] = kNumBlocks;
+
+  // NOTE(mfehr): Either preallocate here and reuse the same blocks everytime we
+  // iterate below, or completely deallocate and allocate in for every
+  // iteration.
+  AllocateBlocksInIndexRange(kMinIdx, kMaxIdx, fast_layer_.get());
 
 #ifdef COUNTFLOPS
   countflops.ResetCastRay();
@@ -265,11 +274,6 @@ BENCHMARK_DEFINE_F(E2EBenchmark, NumPoints_Fast)(benchmark::State& state) {
            countflops.updatetsdf_divs + countflops.updatetsdf_sqrts;
   state.counters["flops"] = flops;
 #endif
-
-  // NOTE(mfehr): Either preallocate here and reuse the same blocks everytime we
-  // iterate below, or completely deallocate and allocate in for every
-  // iteration.
-  AllocateBlocksInIndexRange(kMinIdx, kMaxIdx, fast_layer_.get());
 
   while (state.KeepRunning()) {
     // state.PauseTiming();
@@ -284,6 +288,6 @@ BENCHMARK_DEFINE_F(E2EBenchmark, NumPoints_Fast)(benchmark::State& state) {
 }
 BENCHMARK_REGISTER_F(E2EBenchmark, NumPoints_Fast)
     ->RangeMultiplier(2)
-    ->Range(16, 1e4);
+    ->Range(16, 1e7);
 
 BENCHMARKING_ENTRY_POINT
