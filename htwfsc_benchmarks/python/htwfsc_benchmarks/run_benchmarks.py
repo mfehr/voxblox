@@ -128,9 +128,7 @@ def GeneratePerformancePlotOverParameters(benchmark_context, benchmark_data, rea
         x_label = 'Number of points'
         x_values.append(item["num_points"])
       else:
-        print("WARNING no problem size parameter found!")
-      # else:
-      #   sys.exit("No x-value in benchmarking file. Use either radius_cm or num_points!")
+        print("No problem size values found, using bar plot!")
 
       if "preallocated_memory_B" in item:
         if not "preallocated_memory_B" in y_values_dict:
@@ -306,6 +304,18 @@ def GeneratePerformancePlotOverParameters(benchmark_context, benchmark_data, rea
         axc.set_xlabel(x_label)
         axc.set_ylabel(y_label_dict["cycles"])
         axc.legend(loc=0)
+
+  for key, figures_to_save in figures_dict.items():
+    figures_to_save.savefig(key + ".performance.pdf")
+  for key, figures_to_save in figures_flops_dict.items():
+    figures_to_save.savefig(key + ".flops.pdf")
+  for key, figures_to_save in figures_cycles_dict.items():
+    figures_to_save.savefig(key + ".cycles.pdf")
+  for key, figures_to_save in figures_runtime_dict.items():
+    figures_to_save.savefig(key + ".runtime.pdf")
+  for key, figures_to_save in figures_memory_dict.items():
+    figures_to_save.savefig(key + ".memory.pdf")
+
   return figures_dict.items()
 
 # Generate a plot for each benchmark task within this report.
@@ -349,7 +359,7 @@ parsed = parser.parse_args()
 
 # Build, run the benchmarks and collect the results.
 assert(os.path.isdir(parsed.voxblox_workspace))
-helpers.RunAllBenchmarksOfPackage(parsed.voxblox_workspace, "htwfsc_benchmarks")
+# helpers.RunAllBenchmarksOfPackage(parsed.voxblox_workspace, "htwfsc_benchmarks")
 benchmark_files = helpers.GetAllBenchmarkingResultsOfPackage(
     parsed.voxblox_workspace, "htwfsc_benchmarks")
 
