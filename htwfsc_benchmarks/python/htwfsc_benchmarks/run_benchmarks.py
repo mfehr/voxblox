@@ -127,6 +127,16 @@ def GeneratePerformancePlotOverParameters(benchmark_context, benchmark_data, rea
       elif "num_points" in item:
         x_label = 'Number of points'
         x_values.append(item["num_points"])
+        ax.set_xscale('log', basex=2)
+        axr.set_xscale('log', basex=2)
+        axm.set_xscale('log', basex=2)
+        axf.set_xscale('log', basex=2)
+        axc.set_xscale('log', basex=2)
+
+        axr.set_yscale('log')
+        axm.set_yscale('log')
+        axf.set_yscale('log')
+        axc.set_yscale('log')
       else:
         print("No problem size values found, using bar plot!")
 
