@@ -181,16 +181,16 @@ BENCHMARK_DEFINE_F(E2EBenchmark, Radius_Fast)(benchmark::State& state) {
   // iteration.
   AllocateBlocksInIndexRange(min_idx, max_idx, fast_layer_.get());
 
-#ifdef COUNTFLOPS
-  countflops.ResetCastRay();
-  countflops.ResetUpdateTsdf();
-  baseline_integrator_->integratePointCloud_flopcount(T_G_C, sphere_points_C,
-                                                      colors_);
-  size_t flops = countflops.castray_adds + countflops.castray_divs;
-  flops += countflops.updatetsdf_adds + countflops.updatetsdf_muls +
-           countflops.updatetsdf_divs + countflops.updatetsdf_sqrts;
-  state.counters["flops"] = flops;
-#endif
+  #ifdef COUNTFLOPS
+    countflops.ResetCastRay();
+    countflops.ResetUpdateTsdf();
+    baseline_integrator_->integratePointCloud_flopcount(T_G_C, sphere_points_C,
+                                                        colors_);
+    size_t flops = countflops.castray_adds + countflops.castray_divs;
+    flops += countflops.updatetsdf_adds + countflops.updatetsdf_muls +
+             countflops.updatetsdf_divs + countflops.updatetsdf_sqrts;
+    state.counters["flops"] = flops;
+  #endif
 
   while (state.KeepRunning()) {
     // state.PauseTiming();
@@ -224,16 +224,16 @@ BENCHMARK_DEFINE_F(E2EBenchmark, NumPoints_Baseline)
   // iteration.
   AllocateBlocksInIndexRange(kMinIdx, kMaxIdx, baseline_layer_.get());
 
-#ifdef COUNTFLOPS
-  countflops.ResetCastRay();
-  countflops.ResetUpdateTsdf();
-  baseline_integrator_->integratePointCloud_flopcount(T_G_C, sphere_points_C,
-                                                      colors_);
-  size_t flops = countflops.castray_adds + countflops.castray_divs;
-  flops += countflops.updatetsdf_adds + countflops.updatetsdf_muls +
-           countflops.updatetsdf_divs + countflops.updatetsdf_sqrts;
-  state.counters["flops"] = flops;
-#endif
+  #ifdef COUNTFLOPS
+    countflops.ResetCastRay();
+    countflops.ResetUpdateTsdf();
+    baseline_integrator_->integratePointCloud_flopcount(T_G_C, sphere_points_C,
+                                                        colors_);
+    size_t flops = countflops.castray_adds + countflops.castray_divs;
+    flops += countflops.updatetsdf_adds + countflops.updatetsdf_muls +
+             countflops.updatetsdf_divs + countflops.updatetsdf_sqrts;
+    state.counters["flops"] = flops;
+  #endif
 
   while (state.KeepRunning()) {
     // state.PauseTiming();
@@ -264,16 +264,16 @@ BENCHMARK_DEFINE_F(E2EBenchmark, NumPoints_Fast)(benchmark::State& state) {
   // iteration.
   AllocateBlocksInIndexRange(kMinIdx, kMaxIdx, fast_layer_.get());
 
-#ifdef COUNTFLOPS
-  countflops.ResetCastRay();
-  countflops.ResetUpdateTsdf();
-  baseline_integrator_->integratePointCloud_flopcount(T_G_C, sphere_points_C,
-                                                      colors_);
-  size_t flops = countflops.castray_adds + countflops.castray_divs;
-  flops += countflops.updatetsdf_adds + countflops.updatetsdf_muls +
-           countflops.updatetsdf_divs + countflops.updatetsdf_sqrts;
-  state.counters["flops"] = flops;
-#endif
+  #ifdef COUNTFLOPS
+    countflops.ResetCastRay();
+    countflops.ResetUpdateTsdf();
+    baseline_integrator_->integratePointCloud_flopcount(T_G_C, sphere_points_C,
+                                                        colors_);
+    size_t flops = countflops.castray_adds + countflops.castray_divs;
+    flops += countflops.updatetsdf_adds + countflops.updatetsdf_muls +
+             countflops.updatetsdf_divs + countflops.updatetsdf_sqrts;
+    state.counters["flops"] = flops;
+  #endif
 
   while (state.KeepRunning()) {
     // state.PauseTiming();
