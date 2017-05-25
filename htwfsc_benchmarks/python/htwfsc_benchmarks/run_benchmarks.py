@@ -52,14 +52,15 @@ def GeneratePerformancePlotOverParameters(benchmark_context, benchmark_data, rea
   rcParams['font.sans-serif'] = ['Gill Sans MT']
 
   colors = {'Baseline': '#284910', 'Fast': '#C51929', 'Other': '#ECC351'}
-  bar_indent = {'Baseline': 0.25, 'Fast': 0.75, 'Other': 1.25}
-  bar_width = 0.45
+  bar_indent = {'Baseline': 0.1, 'Fast': 0.55, 'Other': 1.25}
+  bar_width = 0.35
 
   y_label_dict = {"flops": "flops", "preallocated_memory_B":
                   "Allocated memory [MB]", "flops_p_cycle": "Performance [flops/cycle]", "cpu_time": "Runtime [s]", "cycles": "cycles", "preallocated_blocks": "Allocated blocks"}
 
   for case_results in benchmark_data:
     case_name = str.split(str(case_results[0]["name"]), '/')[1]
+
     split_case_name = str.split(case_name, '_')
     if len(split_case_name) > 2:
       exit("Your case name is wrong. It should have 2 parts separated by _")
@@ -179,19 +180,19 @@ def GeneratePerformancePlotOverParameters(benchmark_context, benchmark_data, rea
         assert len(y_values) == 1
         if y_values_key is "flops_p_cycle":
           ax.bar(bar_indent[split_case_name[1]], y_values[0], bar_width,
-                 color=colors[split_case_name[1]], label=case_name)
+                 color=colors[split_case_name[1]], label=split_case_name[1])
         elif y_values_key is "cpu_time":
           axr.bar(bar_indent[split_case_name[1]], y_values[0],
-                  bar_width, color=colors[split_case_name[1]], label=case_name)
+                  bar_width, color=colors[split_case_name[1]], label=split_case_name[1])
         elif y_values_key is "flops":
           axf.bar(bar_indent[split_case_name[1]], y_values[0],
-                  bar_width, color=colors[split_case_name[1]], label=case_name)
+                  bar_width, color=colors[split_case_name[1]], label=split_case_name[1])
         elif y_values_key is "preallocated_memory_B":
           axm.bar(bar_indent[split_case_name[1]], y_values[0],
-                  bar_width, color=colors[split_case_name[1]], label=case_name)
+                  bar_width, color=colors[split_case_name[1]], label=split_case_name[1])
         elif y_values_key is "cycles":
           axc.bar(bar_indent[split_case_name[1]], y_values[0],
-                  bar_width, color=colors[split_case_name[1]], label=case_name)
+                  bar_width, color=colors[split_case_name[1]], label=split_case_name[1])
         elif y_values_key is "preallocated_blocks":
           # Don't plot
           print("skip preallocated_blocks")
@@ -202,52 +203,62 @@ def GeneratePerformancePlotOverParameters(benchmark_context, benchmark_data, rea
 
       # ax.yaxis.grid(True, linestyle='-', color='white')
       title = 'Performance for ' + benchmark_name
+      ax.patch.set_facecolor('#E2E2E2')
       ax.set_title(title)
       ax.set_ylabel(y_label_dict["flops_p_cycle"])
       ax.legend(loc=0)
+      ax.set_xlim([0, 1.0])
 
       # axr.yaxis.grid(True, linestyle='-', color='white')
+      axr.patch.set_facecolor('#E2E2E2')
       title = 'Runtime for ' + benchmark_name
       axr.set_title(title)
       axr.set_ylabel(y_label_dict["cpu_time"])
       axr.legend(loc=0)
+      axr.set_xlim([0, 1.0])
 
       # axm.yaxis.grid(True, linestyle='-', color='white')
+      axm.patch.set_facecolor('#E2E2E2')
       title = 'Memory for ' + benchmark_name
       axm.set_title(title)
       axm.set_ylabel(y_label_dict["preallocated_memory_B"])
       axm.legend(loc=0)
+      axm.set_xlim([0, 1.0])
 
       # axf.yaxis.grid(True, linestyle='-', color='white')
+      axf.patch.set_facecolor('#E2E2E2')
       title = 'Flops for ' + benchmark_name
       axf.set_title(title)
       axf.set_ylabel(y_label_dict["flops"])
       axf.legend(loc=0)
+      axf.set_xlim([0, 1.0])
 
       # axc.yaxis.grid(True, linestyle='-', color='white')
+      axc.patch.set_facecolor('#E2E2E2')
       title = 'Cycles for ' + benchmark_name
       axc.set_title(title)
       axc.set_ylabel(y_label_dict["cycles"])
       axc.legend(loc=0)
+      axc.set_xlim([0, 1.0])
 
     # If we have a range for the x axis, use line plot.
     else:
       for y_values_key, y_values in y_values_dict.iteritems():
         if y_values_key is "flops_p_cycle":
           ax.plot(x_values, y_values, marker='o', markeredgecolor='none',
-                  color=colors[split_case_name[1]], linewidth=2, markersize=6, label=case_name)
+                  color=colors[split_case_name[1]], linewidth=2, markersize=6, label=split_case_name[1])
         elif y_values_key is "cpu_time":
           axr.plot(x_values, y_values, marker='o', markeredgecolor='none',
-                   color=colors[split_case_name[1]], linewidth=2, markersize=6, label=case_name)
+                   color=colors[split_case_name[1]], linewidth=2, markersize=6, label=split_case_name[1])
         elif y_values_key is "flops":
           axf.plot(x_values, y_values, marker='o', markeredgecolor='none',
-                   color=colors[split_case_name[1]], linewidth=2, markersize=6, label=case_name)
+                   color=colors[split_case_name[1]], linewidth=2, markersize=6, label=split_case_name[1])
         elif y_values_key is "preallocated_memory_B":
           axm.plot(x_values, y_values, marker='o', markeredgecolor='none',
-                   color=colors[split_case_name[1]], linewidth=2, markersize=6, label=case_name)
+                   color=colors[split_case_name[1]], linewidth=2, markersize=6, label=split_case_name[1])
         elif y_values_key is "cycles":
           axc.plot(x_values, y_values, marker='o', markeredgecolor='none',
-                   color=colors[split_case_name[1]], linewidth=2, markersize=6, label=case_name)
+                   color=colors[split_case_name[1]], linewidth=2, markersize=6, label=split_case_name[1])
         elif y_values_key is "preallocated_blocks":
           # Don't plot
           print("skip preallocated_blocks")
@@ -256,6 +267,7 @@ def GeneratePerformancePlotOverParameters(benchmark_context, benchmark_data, rea
 
         benchmark_name = str.split(str(benchmark_data[0][0]["name"]), '/')[0]
 
+        ax.patch.set_facecolor('#E2E2E2')
         ax.yaxis.grid(True, linestyle='-', color='white')
         title = 'Performance for ' + benchmark_name
         ax.set_title(title)
@@ -263,6 +275,7 @@ def GeneratePerformancePlotOverParameters(benchmark_context, benchmark_data, rea
         ax.set_ylabel(y_label_dict["flops_p_cycle"])
         ax.legend(loc=0)
 
+        axr.patch.set_facecolor('#E2E2E2')
         axr.yaxis.grid(True, linestyle='-', color='white')
         title = 'Runtime for ' + benchmark_name
         axr.set_title(title)
@@ -270,6 +283,7 @@ def GeneratePerformancePlotOverParameters(benchmark_context, benchmark_data, rea
         axr.set_ylabel(y_label_dict["cpu_time"])
         axr.legend(loc=0)
 
+        axm.patch.set_facecolor('#E2E2E2')
         axm.yaxis.grid(True, linestyle='-', color='white')
         title = 'Memory for ' + benchmark_name
         axm.set_title(title)
@@ -277,6 +291,7 @@ def GeneratePerformancePlotOverParameters(benchmark_context, benchmark_data, rea
         axm.set_ylabel(y_label_dict["preallocated_memory_B"])
         axm.legend(loc=0)
 
+        axf.patch.set_facecolor('#E2E2E2')
         axf.yaxis.grid(True, linestyle='-', color='white')
         title = 'Flops for ' + benchmark_name
         axf.set_title(title)
@@ -284,13 +299,13 @@ def GeneratePerformancePlotOverParameters(benchmark_context, benchmark_data, rea
         axf.set_ylabel(y_label_dict["flops"])
         axf.legend(loc=0)
 
+        axc.patch.set_facecolor('#E2E2E2')
         axc.yaxis.grid(True, linestyle='-', color='white')
         title = 'Cycles for ' + benchmark_name
         axc.set_title(title)
         axc.set_xlabel(x_label)
         axc.set_ylabel(y_label_dict["cycles"])
         axc.legend(loc=0)
-
   return figures_dict.items()
 
 # Generate a plot for each benchmark task within this report.
@@ -334,7 +349,7 @@ parsed = parser.parse_args()
 
 # Build, run the benchmarks and collect the results.
 assert(os.path.isdir(parsed.voxblox_workspace))
-# helpers.RunAllBenchmarksOfPackage(parsed.voxblox_workspace, "htwfsc_benchmarks")
+helpers.RunAllBenchmarksOfPackage(parsed.voxblox_workspace, "htwfsc_benchmarks")
 benchmark_files = helpers.GetAllBenchmarkingResultsOfPackage(
     parsed.voxblox_workspace, "htwfsc_benchmarks")
 
