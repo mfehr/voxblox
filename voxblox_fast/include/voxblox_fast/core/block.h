@@ -28,6 +28,10 @@ class Block {
     block_size_ = voxels_per_side_ * voxel_size_;
     block_size_inv_ = 1.0 / block_size_;
     voxels_.reset(new VoxelType[num_voxels_]);
+
+    origin_vec_ = loadPointToSse(origin_);
+    half_vec_ = _mm_set1_ps(0.5);
+    voxel_size_vec_ = _mm_set1_ps(voxel_size_);
   }
 
   explicit Block(const BlockProto& proto);
@@ -69,7 +73,15 @@ class Block {
 
   // Returns CENTER point of voxel.
   inline Point computeCoordinatesFromVoxelIndex(const VoxelIndex& index) const {
-    return origin_ + getCenterPointFromGridIndex(index, voxel_size_);
+    __m128i idx = _mm_set_epi32(0, index(2), index(1), index(0));
+    __m128 idx_float = _mm_cvtepi32_ps(idx);
+    __m128 idx_plus_half = _mm_add_ps(idx_float, half_vec_);
+    __m128 idx_times_grid = _mm_mul_ps(idx_plus_half, voxel_size_vec_);
+    __m128 result = _mm_add_ps(idx_times_grid, origin_vec_);
+
+    float ALIGNED_(16) result_array[4];
+    _mm_store_ps(result_array, result);
+    return Point(result[0], result[1], result[2]);
   }
 
   inline VoxelIndex computeVoxelIndexFromLinearIndex(
@@ -178,6 +190,10 @@ class Block {
   bool updated_;
 
   std::unique_ptr<VoxelType[]> voxels_;
+
+  __m128 origin_vec_;
+  __m128 half_vec_;
+  __m128 voxel_size_vec_;
 };
 
 }  // namespace voxblox

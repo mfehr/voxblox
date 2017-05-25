@@ -86,9 +86,9 @@ bool outputMeshAsPly(const std::string& filename, const Mesh& mesh) {
 
     if (mesh.hasColors()) {
       const Color& color = mesh.colors[vert_idx];
-      int r = static_cast<int>(color.r);
-      int g = static_cast<int>(color.g);
-      int b = static_cast<int>(color.b);
+      int r = static_cast<int>(color.rgba[0]);
+      int g = static_cast<int>(color.rgba[1]);
+      int b = static_cast<int>(color.rgba[2]);
       // Uint8 prints as character otherwise. :(
       stream << " " << r << " " << g << " " << b;
     }

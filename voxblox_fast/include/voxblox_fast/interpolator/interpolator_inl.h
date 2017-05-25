@@ -374,22 +374,22 @@ inline bool Interpolator<EsdfVoxel>::isVoxelValid(const EsdfVoxel& voxel) {
 
 template <>
 inline uint8_t Interpolator<TsdfVoxel>::getRed(const TsdfVoxel& voxel) {
-  return voxel.color.r;
+  return voxel.color.rgba[0];
 }
 
 template <>
 inline uint8_t Interpolator<TsdfVoxel>::getGreen(const TsdfVoxel& voxel) {
-  return voxel.color.g;
+  return voxel.color.rgba[1];
 }
 
 template <>
 inline uint8_t Interpolator<TsdfVoxel>::getBlue(const TsdfVoxel& voxel) {
-  return voxel.color.b;
+  return voxel.color.rgba[2];
 }
 
 template <>
 inline uint8_t Interpolator<TsdfVoxel>::getAlpha(const TsdfVoxel& voxel) {
-  return voxel.color.a;
+  return voxel.color.rgba[3];
 }
 
 template <typename VoxelType>
@@ -439,10 +439,10 @@ inline TsdfVoxel Interpolator<TsdfVoxel>::interpVoxel(
   voxel.distance = interpMember(q_vector, voxels, &getVoxelDistance);
   voxel.weight = interpMember(q_vector, voxels, &getVoxelWeight);
 
-  voxel.color.r = interpMember(q_vector, voxels, &getRed);
-  voxel.color.g = interpMember(q_vector, voxels, &getGreen);
-  voxel.color.b = interpMember(q_vector, voxels, &getBlue);
-  voxel.color.a = interpMember(q_vector, voxels, &getAlpha);
+  voxel.color.rgba[0] = interpMember(q_vector, voxels, &getRed);
+  voxel.color.rgba[1] = interpMember(q_vector, voxels, &getGreen);
+  voxel.color.rgba[2] = interpMember(q_vector, voxels, &getBlue);
+  voxel.color.rgba[3] = interpMember(q_vector, voxels, &getAlpha);
 
   return voxel;
 }

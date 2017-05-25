@@ -141,8 +141,13 @@ class TsdfIntegrator {
         tsdf_voxel->color, tsdf_voxel->weight, color, updated_weight);
 
 #ifdef COUNTFLOPS
+    // Weight normalization.
     countflops.updatetsdf_adds += 1;
     countflops.updatetsdf_divs += 2;
+
+    // Color blending. (NOTE: uint8_t * float results in float * float)
+    countflops.updatetsdf_muls += 8;
+    countflops.updatetsdf_adds += 4;
 #endif
 
     const float new_sdf =

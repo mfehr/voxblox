@@ -59,7 +59,6 @@ class E2EBenchmarkFixture {
   static constexpr double kMean = 0;
   static constexpr double kSigma = 0.05;
   static constexpr size_t kNumPoints = 1e5;
-  static constexpr double kRadius = 5.0;
 
   voxblox::TsdfIntegrator::Config config_;
   voxblox_fast::TsdfIntegrator::Config fast_config_;
@@ -76,10 +75,12 @@ int main(int argc, char** argv) {
   google::ParseCommandLineFlags(&argc, &argv, true);
   FLAGS_alsologtostderr = 1;
 
+  const double kStupidOsXCantCompileThisRadiusMeters = 5.0;
+
   E2EBenchmarkFixture fixture;
-  const size_t radius = fixture.kRadius;
   fixture.SetUp();
-  fixture.CreateSphere(radius, fixture.kNumPoints);
+  fixture.CreateSphere(kStupidOsXCantCompileThisRadiusMeters,
+                       fixture.kNumPoints);
 
   LOG(WARNING) << "Running baseline impl: " << FLAGS_use_baseline;
   if (FLAGS_use_baseline) {
