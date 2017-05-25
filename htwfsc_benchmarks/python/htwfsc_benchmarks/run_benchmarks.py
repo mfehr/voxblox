@@ -1,4 +1,4 @@
-#!/usr/bin/env pyhton
+#!/usr/bin/env python
 import argparse
 from collections import defaultdict
 from functools import partial
@@ -13,6 +13,7 @@ import os
 from pprint import pprint
 import shutil
 import sys
+from collections import defaultdict
 
 
 def LoadGoogleBenchmarkJsonReportResults(filename):
@@ -28,23 +29,36 @@ def PlotPerformanceOverParameter(parameter_values, performance_values):
   return fig
 
 
-def GeneratePerformancePlotOverParameters(benchmark_context, benchmark_data):
+def GeneratePerformancePlotOverParameters(benchmark_context, benchmark_data, real_cpu_freq_mhz):
   if benchmark_context["cpu_scaling_enabled"]:
     print "WARNING: Dynamic frequency scaling was active during the benchmarking!"
   if benchmark_context["library_build_type"] != "release":
     print "WARNING: Benchmarking was run on a non release build."
 
+  cpu_freq_to_use_mhz = benchmark_context["mhz_per_cpu"]
+  if real_cpu_freq_mhz > 0:
+    cpu_freq_to_use_mhz = real_cpu_freq_mhz
+
+  print("Use {} MHz as CPU frequency.".format(cpu_freq_to_use_mhz))
+
   figures_dict = dict()
   figures_runtime_dict = dict()
+  figures_flops_dict = dict()
+  figures_cycles_dict = dict()
+  figures_memory_dict = dict()
 
   # Plot stuff.
   rcParams['font.family'] = 'sans-serif'
   rcParams['font.sans-serif'] = ['Gill Sans MT']
 
   colors = {'Baseline': '#284910', 'Fast': '#C51929', 'Other': '#ECC351'}
+  bar_indent = {'Baseline': 0.25, 'Fast': 0.75, 'Other': 1.25}
+  bar_width = 0.45
+
+  y_label_dict = {"flops": "flops", "preallocated_memory_B":
+                  "Allocated memory [MB]", "flops_p_cycle": "Performance [flops/cycle]", "cpu_time": "Runtime [s]", "cycles": "cycles", "preallocated_blocks": "Allocated blocks"}
 
   for case_results in benchmark_data:
-    idx = 0
     case_name = str.split(str(case_results[0]["name"]), '/')[1]
     split_case_name = str.split(case_name, '_')
     if len(split_case_name) > 2:
@@ -55,67 +69,234 @@ def GeneratePerformancePlotOverParameters(benchmark_context, benchmark_data):
       fig, ax = plt.subplots()
       figures_dict[split_case_name[0]] = fig
     else:
-      fig = figures_dict[split_case_name[0]] 
+      fig = figures_dict[split_case_name[0]]
 
     if split_case_name[0] not in figures_runtime_dict:
       print 'Creating runtime figure for ' + split_case_name[0]
       figr, axr = plt.subplots()
       figures_runtime_dict[split_case_name[0]] = figr
     else:
-      figr = figures_runtime_dict[split_case_name[0]] 
+      figr = figures_runtime_dict[split_case_name[0]]
 
-    ax = fig.gca();
-    axr = figr.gca();
+    if split_case_name[0] not in figures_memory_dict:
+      print 'Creating memory plot for ' + split_case_name[0]
+      figm, axm = plt.subplots()
+      figures_memory_dict[split_case_name[0]] = figm
+    else:
+      figm = figures_memory_dict[split_case_name[0]]
+
+    if split_case_name[0] not in figures_flops_dict:
+      print 'Creating flop plot for ' + split_case_name[0]
+      figf, axf = plt.subplots()
+      figures_flops_dict[split_case_name[0]] = figf
+    else:
+      figf = figures_flops_dict[split_case_name[0]]
+
+    if split_case_name[0] not in figures_cycles_dict:
+      print 'Creating cycle plot for ' + split_case_name[0]
+      figc, axc = plt.subplots()
+      figures_cycles_dict[split_case_name[0]] = figc
+    else:
+      figc = figures_cycles_dict[split_case_name[0]]
+
+    ax = fig.gca()
+    axr = figr.gca()
+    axm = figm.gca()
+    axf = figf.gca()
+    axc = figc.gca()
 
     print 'Benchmarking case: ' + split_case_name[0] + ', version: ' + split_case_name[1]
-    parameters = list()
+    y_values_dict = defaultdict(list)
+
+    x_label = "NO X LABEL"
+    x_values = list()
+
     yvalues = list()
     runtime = list()
     for item in case_results:
+
+      found_cycle = False
+      found_flops = False
+
       if "radius_cm" in item:
         # Radii were multiplied by 10 to avoid casting the value to int
         # while storing as JSON. Check and fix.
-        parameters.append(item["radius_cm"] / 100.0)
-        xlabel = 'Radius [m]'
+        x_label = 'Radius [m]'
+        x_values.append(item["radius_cm"] / 100.0)
       elif "num_points" in item:
-        parameters.append(item["num_points"])
-        xlabel = 'Number of points'
+        x_label = 'Number of points'
+        x_values.append(item["num_points"])
       else:
-        sys.exit("No x-value in benchmarking file. Use either radius_cm or num_points!")
+        print("WARNING no problem size parameter found!")
+      # else:
+      #   sys.exit("No x-value in benchmarking file. Use either radius_cm or num_points!")
 
-      runtime_seconds = item["cpu_time"] * \
-          helpers.UnitToScaler(item["time_unit"])
-      cycles = runtime_seconds * benchmark_context["mhz_per_cpu"] * 1e6
-      flops = item["flops"] 
-      yvalues.append(float(flops) / cycles)
-      runtime.append(cycles)
-    ax.plot(parameters, yvalues, marker='o', markeredgecolor='none',
-               color=colors[split_case_name[1]], linewidth=2, markersize=6, label=case_name)
-    axr.plot(parameters, runtime, marker='o', markeredgecolor='none',
-                color=colors[split_case_name[1]], linewidth=2, markersize=6, label=case_name)
-    idx += 1
+      if "preallocated_memory_B" in item:
+        if not "preallocated_memory_B" in y_values_dict:
+          y_values_dict["preallocated_memory_B"] = list()
+        y_values_dict["preallocated_memory_B"].append(item["preallocated_memory_B"] / 1e6)
 
-    ax.set_facecolor('#E2E2E2')
-    ax.yaxis.grid(True, linestyle='-', color='white')
-    benchmark_name = str.split(str(benchmark_data[0][0]["name"]), '/')[0]
-    title = 'Performance for ' + benchmark_name
-    ax.set_title(title)
-    ax.set_xlabel(xlabel)
-    ax.set_ylabel('Performance [flops/cycles]')
-    ax.legend(loc=0)
+      if "preallocated_blocks" in item:
+        if not "preallocated_blocks" in y_values_dict:
+          y_values_dict["preallocated_blocks"] = list()
+        y_values_dict["preallocated_blocks"].append(item["preallocated_blocks"])
 
-    axr.set_facecolor('#E2E2E2')
-    axr.yaxis.grid(True, linestyle='-', color='white')
-    title = 'Runtime for ' + benchmark_name
-    axr.set_title(title)
-    axr.set_xlabel(xlabel)
-    axr.set_ylabel('Runtime [cycles]')
-    axr.legend(loc=0)
+      if "flops" in item:
+        if not "flops" in y_values_dict:
+          y_values_dict["flops"] = list()
+        y_values_dict["flops"].append(item["flops"])
+        found_flop = True
+
+      if "cpu_time" in item:
+        if not "cpu_time" in y_values_dict:
+          y_values_dict["cpu_time"] = list()
+          y_values_dict["cycles"] = list()
+        runtime_seconds = item["cpu_time"] * \
+            helpers.UnitToScaler(item["time_unit"])
+        y_values_dict["cpu_time"].append(runtime_seconds)
+        y_values_dict["cycles"].append(runtime_seconds * cpu_freq_to_use_mhz * 1e6)
+        found_cycle = True
+
+      if found_flop and found_cycle:
+        if not "flops_p_cycle" in y_values_dict:
+          y_values_dict["flops_p_cycle"] = list()
+        assert "flops" in y_values_dict
+        assert "cycles" in y_values_dict
+        assert len(y_values_dict["flops"]) == len(y_values_dict["cycles"])
+        y_values_dict["flops_p_cycle"].append(
+            float(y_values_dict["flops"][-1]) / y_values_dict["cycles"][-1])
+
+    print(x_label)
+    print(x_values)
+
+    print(y_label_dict)
+    print(y_values_dict)
+
+    # If we have no problem size parameter, i.e. no range for x, use bar plot.
+    if not x_values:
+
+      for y_values_key, y_values in y_values_dict.iteritems():
+        assert len(y_values) == 1
+        if y_values_key is "flops_p_cycle":
+          ax.bar(bar_indent[split_case_name[1]], y_values[0], bar_width,
+                 color=colors[split_case_name[1]], label=case_name)
+        elif y_values_key is "cpu_time":
+          axr.bar(bar_indent[split_case_name[1]], y_values[0],
+                  bar_width, color=colors[split_case_name[1]], label=case_name)
+        elif y_values_key is "flops":
+          axf.bar(bar_indent[split_case_name[1]], y_values[0],
+                  bar_width, color=colors[split_case_name[1]], label=case_name)
+        elif y_values_key is "preallocated_memory_B":
+          axm.bar(bar_indent[split_case_name[1]], y_values[0],
+                  bar_width, color=colors[split_case_name[1]], label=case_name)
+        elif y_values_key is "cycles":
+          axc.bar(bar_indent[split_case_name[1]], y_values[0],
+                  bar_width, color=colors[split_case_name[1]], label=case_name)
+        elif y_values_key is "preallocated_blocks":
+          # Don't plot
+          print("skip preallocated_blocks")
+        else:
+          sys.exit("Unknown y values for bar plot")
+
+      benchmark_name = str.split(str(benchmark_data[0][0]["name"]), '/')[0]
+
+      # ax.yaxis.grid(True, linestyle='-', color='white')
+      title = 'Performance for ' + benchmark_name
+      ax.set_title(title)
+      ax.set_ylabel(y_label_dict["flops_p_cycle"])
+      ax.legend(loc=0)
+
+      # axr.yaxis.grid(True, linestyle='-', color='white')
+      title = 'Runtime for ' + benchmark_name
+      axr.set_title(title)
+      axr.set_ylabel(y_label_dict["cpu_time"])
+      axr.legend(loc=0)
+
+      # axm.yaxis.grid(True, linestyle='-', color='white')
+      title = 'Memory for ' + benchmark_name
+      axm.set_title(title)
+      axm.set_ylabel(y_label_dict["preallocated_memory_B"])
+      axm.legend(loc=0)
+
+      # axf.yaxis.grid(True, linestyle='-', color='white')
+      title = 'Flops for ' + benchmark_name
+      axf.set_title(title)
+      axf.set_ylabel(y_label_dict["flops"])
+      axf.legend(loc=0)
+
+      # axc.yaxis.grid(True, linestyle='-', color='white')
+      title = 'Cycles for ' + benchmark_name
+      axc.set_title(title)
+      axc.set_ylabel(y_label_dict["cycles"])
+      axc.legend(loc=0)
+
+    # If we have a range for the x axis, use line plot.
+    else:
+      for y_values_key, y_values in y_values_dict.iteritems():
+        if y_values_key is "flops_p_cycle":
+          ax.plot(x_values, y_values, marker='o', markeredgecolor='none',
+                  color=colors[split_case_name[1]], linewidth=2, markersize=6, label=case_name)
+        elif y_values_key is "cpu_time":
+          axr.plot(x_values, y_values, marker='o', markeredgecolor='none',
+                   color=colors[split_case_name[1]], linewidth=2, markersize=6, label=case_name)
+        elif y_values_key is "flops":
+          axf.plot(x_values, y_values, marker='o', markeredgecolor='none',
+                   color=colors[split_case_name[1]], linewidth=2, markersize=6, label=case_name)
+        elif y_values_key is "preallocated_memory_B":
+          axm.plot(x_values, y_values, marker='o', markeredgecolor='none',
+                   color=colors[split_case_name[1]], linewidth=2, markersize=6, label=case_name)
+        elif y_values_key is "cycles":
+          axc.plot(x_values, y_values, marker='o', markeredgecolor='none',
+                   color=colors[split_case_name[1]], linewidth=2, markersize=6, label=case_name)
+        elif y_values_key is "preallocated_blocks":
+          # Don't plot
+          print("skip preallocated_blocks")
+        else:
+          sys.exit("Unknown y values for line plot")
+
+        benchmark_name = str.split(str(benchmark_data[0][0]["name"]), '/')[0]
+
+        ax.yaxis.grid(True, linestyle='-', color='white')
+        title = 'Performance for ' + benchmark_name
+        ax.set_title(title)
+        ax.set_xlabel(x_label)
+        ax.set_ylabel(y_label_dict["flops_p_cycle"])
+        ax.legend(loc=0)
+
+        axr.yaxis.grid(True, linestyle='-', color='white')
+        title = 'Runtime for ' + benchmark_name
+        axr.set_title(title)
+        axr.set_xlabel(x_label)
+        axr.set_ylabel(y_label_dict["cpu_time"])
+        axr.legend(loc=0)
+
+        axm.yaxis.grid(True, linestyle='-', color='white')
+        title = 'Memory for ' + benchmark_name
+        axm.set_title(title)
+        axm.set_xlabel(x_label)
+        axm.set_ylabel(y_label_dict["preallocated_memory_B"])
+        axm.legend(loc=0)
+
+        axf.yaxis.grid(True, linestyle='-', color='white')
+        title = 'Flops for ' + benchmark_name
+        axf.set_title(title)
+        axf.set_xlabel(x_label)
+        axf.set_ylabel(y_label_dict["flops"])
+        axf.legend(loc=0)
+
+        axc.yaxis.grid(True, linestyle='-', color='white')
+        title = 'Cycles for ' + benchmark_name
+        axc.set_title(title)
+        axc.set_xlabel(x_label)
+        axc.set_ylabel(y_label_dict["cycles"])
+        axc.legend(loc=0)
 
   return figures_dict.items()
 
 # Generate a plot for each benchmark task within this report.
-def GeneratePlotsForBenchmarkFile(filename):
+
+
+def GeneratePlotsForBenchmarkFile(filename, real_cpu_freq_mhz):
   print 'Generating plots for benchmark file: ' + filename
   json_data = LoadGoogleBenchmarkJsonReportResults(filename)
   benchmark_context = json_data["context"]
@@ -135,9 +316,7 @@ def GeneratePlotsForBenchmarkFile(filename):
   for key, value in results.items():
     results_by_case.append(value)
 
-  # TODO(schneith): Determine the type of benchmarking. e.g. parameter range and call
-  # specialized plotting functions.
-  fig = GeneratePerformancePlotOverParameters(benchmark_context, results_by_case)
+  fig = GeneratePerformancePlotOverParameters(benchmark_context, results_by_case, real_cpu_freq_mhz)
   figures.append(fig)
 
   return figures
@@ -149,18 +328,20 @@ parser.add_argument('--voxblox-workspace', dest='voxblox_workspace', nargs='?',
                     default="/home/user/code/htwfnc_ws", help='Voxblox workspace.')
 parser.add_argument('--show-on-screen', dest='show_on_screen', type=bool,
                     default=True, help='Show plots on screen?')
+parser.add_argument('--real-cpu-frequency_mhz', dest='real_cpu_freq_mhz', type=int,
+                    default=-1, help='Actual CPU frequency, needed if turbo boost is turned off, bceause Google benchmark does not write the correct frequency into the benchmark results.')
 parsed = parser.parse_args()
 
 # Build, run the benchmarks and collect the results.
 assert(os.path.isdir(parsed.voxblox_workspace))
-helpers.RunAllBenchmarksOfPackage(parsed.voxblox_workspace, "htwfsc_benchmarks")
+# helpers.RunAllBenchmarksOfPackage(parsed.voxblox_workspace, "htwfsc_benchmarks")
 benchmark_files = helpers.GetAllBenchmarkingResultsOfPackage(
     parsed.voxblox_workspace, "htwfsc_benchmarks")
 
 # Generate a plot for each benchmark result file.
 figures = list()
 for benchmark_file in benchmark_files:
-  figures.append(GeneratePlotsForBenchmarkFile(benchmark_file))
+  figures.append(GeneratePlotsForBenchmarkFile(benchmark_file, parsed.real_cpu_freq_mhz))
 
 if parsed.show_on_screen:
   plt.show()
