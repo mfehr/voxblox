@@ -36,6 +36,10 @@ class E2EBenchmark : public ::benchmark::Fixture {
     fast_integrator_.reset(
         new voxblox_fast::TsdfIntegrator(fast_config_, fast_layer_.get()));
     T_G_C = voxblox::Transformation();
+
+    kNumBlocksPerSide = std::abs(kMinIdx - kMaxIdx);
+    kNumBlocks =
+      kNumBlocksPerSide * kNumBlocksPerSide * kNumBlocksPerSide;
   }
 
   void CreateSphere(const double radius, const size_t num_points) {
@@ -97,9 +101,8 @@ class E2EBenchmark : public ::benchmark::Fixture {
   static constexpr double kRadius = 1.0;
   static constexpr int kMinIdx = -(kRadius / (kVoxelsPerSide * kVoxelSize) + 1);
   static constexpr int kMaxIdx = (kRadius / (kVoxelsPerSide * kVoxelSize) + 1);
-  static constexpr int kNumBlocksPerSide = std::abs(kMinIdx - kMaxIdx);
-  static constexpr int kNumBlocks =
-      kNumBlocksPerSide * kNumBlocksPerSide * kNumBlocksPerSide;
+  int kNumBlocksPerSide;
+  int kNumBlocks;
 
   voxblox::TsdfIntegrator::Config config_;
   voxblox_fast::TsdfIntegrator::Config fast_config_;

@@ -51,8 +51,8 @@ def GeneratePerformancePlotOverParameters(benchmark_context, benchmark_data, rea
   rcParams['font.family'] = 'sans-serif'
   rcParams['font.sans-serif'] = ['Gill Sans MT']
 
-  colors = {'Baseline': '#284910', 'Fast': '#C51929', 'Other': '#ECC351'}
-  bar_indent = {'Baseline': 0.1, 'Fast': 0.55, 'Other': 1.25}
+  colors = {'Baseline': '#C88342', 'Fast': '#9AAC32', 'Other': '#ECC351'}
+  bar_indent = {'Baseline': 0.25, 'Fast': 0.75, 'Other': 2.5}
   bar_width = 0.35
 
   y_label_dict = {"flops": "flops", "preallocated_memory_B":
@@ -175,11 +175,11 @@ def GeneratePerformancePlotOverParameters(benchmark_context, benchmark_data, rea
         y_values_dict["flops_p_cycle"].append(
             float(y_values_dict["flops"][-1]) / y_values_dict["cycles"][-1])
 
-    print(x_label)
-    print(x_values)
+    #print(x_label)
+    #print(x_values)
 
-    print(y_label_dict)
-    print(y_values_dict)
+    #print(y_label_dict)
+    #print(y_values_dict)
 
     # If we have no problem size parameter, i.e. no range for x, use bar plot.
     if not x_values:
@@ -188,7 +188,10 @@ def GeneratePerformancePlotOverParameters(benchmark_context, benchmark_data, rea
         assert len(y_values) == 1
         if y_values_key is "flops_p_cycle":
           ax.bar(bar_indent[split_case_name[1]], y_values[0], bar_width,
-                 color=colors[split_case_name[1]], label=split_case_name[1])
+                 color=colors[split_case_name[1]], label=split_case_name[1], zorder=3)
+          ax.set_ylim(ymin=0, ymax = max(ax.get_ylim()[1], 1.1 * max(y_values)))
+          ax.set_xticks([bar_indent['Baseline'], bar_indent['Fast']])
+          ax.set_xticklabels(['Baseline', 'Fast'])
         elif y_values_key is "cpu_time":
           axr.bar(bar_indent[split_case_name[1]], y_values[0],
                   bar_width, color=colors[split_case_name[1]], label=split_case_name[1])
@@ -214,7 +217,8 @@ def GeneratePerformancePlotOverParameters(benchmark_context, benchmark_data, rea
       ax.patch.set_facecolor('#E2E2E2')
       ax.set_title(title)
       ax.set_ylabel(y_label_dict["flops_p_cycle"])
-      ax.legend(loc=0)
+      #ax.legend(loc=0)
+      ax.yaxis.grid(True, linestyle='-', color='white', zorder=0)
       ax.set_xlim([0, 1.0])
 
       # axr.yaxis.grid(True, linestyle='-', color='white')
@@ -255,6 +259,7 @@ def GeneratePerformancePlotOverParameters(benchmark_context, benchmark_data, rea
         if y_values_key is "flops_p_cycle":
           ax.plot(x_values, y_values, marker='o', markeredgecolor='none',
                   color=colors[split_case_name[1]], linewidth=2, markersize=6, label=split_case_name[1])
+          ax.set_ylim(ymin=0, ymax = max(ax.get_ylim()[1], 1.1 * max(y_values)))
         elif y_values_key is "cpu_time":
           axr.plot(x_values, y_values, marker='o', markeredgecolor='none',
                    color=colors[split_case_name[1]], linewidth=2, markersize=6, label=split_case_name[1])

@@ -15,12 +15,12 @@ def PlotRoofline(title, arch_flops_per_cycle, arch_memory_bandwidth,
     opint_intersection = arch_flops_per_cycle / arch_memory_bandwidth
     opint_max = 1e3
 
-    colors = {'Baseline': '#284910', 'Fast': '#C51929', 'Other': '#ECC351'}
+    colors = {'Baseline': '#C88342', 'Fast': '#9AAC32', 'Other': '#ECC351'}
 
     x = np.linspace(opint_intersection, opint_max, 1000)
     y_perf = arch_flops_per_cycle * np.ones(x.size)
     fig, ax = plt.subplots()
-    label='performance ' + str(arch_flops_per_cycle) + ' flops/cycle'
+    label='SSE performance ' + str(arch_flops_per_cycle) + ' flops/cycle'
     plt.loglog(x, y_perf, label=label, lw=2, color='k')
     ax.annotate(label, (opint_intersection + 5, arch_flops_per_cycle + 0.5))
     
@@ -38,8 +38,8 @@ def PlotRoofline(title, arch_flops_per_cycle, arch_memory_bandwidth,
         all_perf.append(perf)
     plt.loglog(all_opint, all_perf, 'o-', color=colors['Baseline'], label='baseline', 
                linewidth=2, markersize=6)
-    ax.annotate(baseline_pts[0][0], (all_opint[0], all_perf[0]))
-    ax.annotate(baseline_pts[-1][0], (all_opint[-1], all_perf[-1]))
+    #ax.annotate(baseline_pts[0][0], (all_opint[0], all_perf[0]))
+    #ax.annotate(baseline_pts[-1][0], (all_opint[-1], all_perf[-1]))
         
     all_opint=list()
     all_perf=list()
@@ -48,8 +48,8 @@ def PlotRoofline(title, arch_flops_per_cycle, arch_memory_bandwidth,
         all_perf.append(perf)
     plt.loglog(all_opint, all_perf, 'o-', color=colors['Fast'], label='Fast', 
                linewidth=2, markersize=6)
-    ax.annotate(optimized_pts[0][0], (all_opint[0], all_perf[0]))
-    ax.annotate(optimized_pts[-1][0], (all_opint[-1], all_perf[-1]))
+    #ax.annotate(optimized_pts[0][0], (all_opint[0], all_perf[0]))
+    #ax.annotate(optimized_pts[-1][0], (all_opint[-1], all_perf[-1]))
     
     ax.set_xlabel('operational intensity [flops/byte]')
     ax.set_ylabel('performance [flops/cycle]')
@@ -226,7 +226,7 @@ optimized_pts = [
 ]
 print optimized_pts
 
-title = 'Roofline for varying radius of the ball [m]'
+title = 'Roofline plot for varying radius [m]'
 fig = PlotRoofline(title, arch_flops_per_cycle, arch_memory_bandwidth, 
                    baseline_pts, optimized_pts)
 fig.savefig("roofline-over-num-pts.pdf", bbox_inches='tight')
@@ -384,7 +384,7 @@ optimized_pts = [
 ]
 print optimized_pts
 
-title = 'Roofline for varying number of points on the ball [-]'
+title = 'Roofline plot for varying number of points'
 fig = PlotRoofline(title, arch_flops_per_cycle, arch_memory_bandwidth, 
                    baseline_pts, optimized_pts)
 fig.savefig("roofline-over-radius.pdf", bbox_inches='tight')
